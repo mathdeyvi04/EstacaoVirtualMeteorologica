@@ -6,6 +6,7 @@ Descrição:
 """
 from FrontEndCompleto import *
 
+
 def precursor() -> None:
     """
     Descrição:
@@ -18,7 +19,21 @@ def precursor() -> None:
         Verificações de Existência e posterior execução da aplicação.
     """
 
-    pass
+    # Verificações de existência de arquivos
+    for pasta_de_dados in diretorios:
+        if not isdir(
+            diretorios[pasta_de_dados]
+        ):
+            # Quer dizer que o caminho da pasta não existe.
+            # Devemos criá-lo então.
+            mkdir(
+                pasta_de_dados
+            )
+            mb.showinfo(
+                "Criação",
+                f"Não havia a pasta chamada {pasta_de_dados}, por isso a criei."
+            )
+
 
 
 if __name__ == '__main__':
