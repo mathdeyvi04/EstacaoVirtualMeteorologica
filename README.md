@@ -23,6 +23,16 @@ em especial GOES - 16.
 * Apresentação de Informações de Clima em tempo quase-real.
 * Armazenamento Inteligente de Informações
 
+## Tecnologias Utilizadas
+
+Neste trabalho serão utilizados os seguintes módulos e seus respectivos
+motivos:
+
+* netCDF4 ----- Manipulação dos Dados Gerados pelo Satélite GOES - 16
+* boto3 ----- Conexão com Servidor
+* customtkinter ----- Interfaces Gráficas
+* pandas ----- Manipulação de Planilhas em código
+
 ## Recomendação
 Caso deseje ser um contribuidor, sugiro a leitura do arquivo de
 Padroes_de_Codigo_a_Serem_Seguidos.md
