@@ -10,7 +10,10 @@ from tkinter import messagebox as mb
 import customtkinter as ctk
 
 # Importações de Servidor
-
+from mypy_boto3_s3 import S3Client
+import boto3 as bt
+from botocore import UNSIGNED
+from botocore.client import Config
 
 # Importações de Sistema
 from os.path import isdir, isfile
@@ -23,6 +26,7 @@ import netCDF4 as nc
 
 # Importações de Visualização de Dados
 from PIL import Image, ImageTk
+from pprint import pprint
 
 
 # -------------------------------------------------------------------------
@@ -39,6 +43,8 @@ caminhos = {
 
 # Variáveis Concorrentes
 var_globais = {
+    "bucket": "noaa-goes16",
+
     "vars_de_clima": [
         "ABI-L2-TPWF",  # Total Precipitable Water Full Disk
     ]
