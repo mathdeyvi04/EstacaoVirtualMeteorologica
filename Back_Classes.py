@@ -206,11 +206,13 @@ class DataSat:
         """
 
         # De posse das latitudes da imagem completa, devemos setar apenas o desejado.
-        MAX_LAT = 1.91
-        MIN_LAT = -8.35
+        MAX_LAT = -22.418
+        MIN_LAT = -22.55
 
-        MAX_LON = -58.9
-        MIN_LON = -39.3
+        # Imagine que voce está no centro da terra
+        # A máxima longitude é obtida indo cada vez mais para o oeste.
+        MAX_LON = -43.232
+        MIN_LON = -43.146
 
         # Vamos criar uma função para estes valores
         lat_desejado_max, lat_desejado_min = corretor_de_geocoordenadas(MIN_LAT, True), corretor_de_geocoordenadas(MAX_LAT, True)
@@ -254,7 +256,7 @@ class DataSat:
     def colhendo_pixels(
             self,
             dados_da_var: nc.Variable
-    ) -> list[list]:
+    ) -> MaskedArray:
         """
         Descrição:
             Método responsável por gerar a matriz de pixels da variável.
@@ -280,12 +282,15 @@ class DataSat:
             matriz
         )
 
+        """# Caso testes futuros sejam necessários, é importante descomentar
+        # essa parte para termos acessos aos gráficos gerados pelo fatiamento.
         pp.imshow(
             matriz,
             cmap="gray"
         )
         pp.grid(True)
         pp.title(self.nome_da_variavel_de_clima)
-        pp.show()
+        pp.show()"""
 
-        return [[]]
+        return matriz
+

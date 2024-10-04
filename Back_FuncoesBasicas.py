@@ -95,6 +95,18 @@ def corretor_de_geocoordenadas(
 
         Agora para longitude, temos: (-81.2, -81.2) e (-34.8, -16.8)
         A partir dos quais, False = 1.38793 * (Verdadeiro) + 31.5
+
+        Entretanto, esses valores ainda apresentam uma margem de erro significativa.
+        Talvez um estudo futuro seja necessário para garantirmos uma maior precisão.
+
+    Parâmetros:
+        -> valor_real:
+            Valor Real da Geocordenada
+        -> se_eh_lat:
+            Booleano indicando se o número se trata da latitude ou longetude.
+
+    Retorno:
+        Valor da geocoordenada corrigido para o sistema.
         """
 
     a, b = (- 1.36842, - 4.26316) if se_eh_lat else (1.38793, 31.5)
