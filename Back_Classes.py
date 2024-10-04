@@ -49,6 +49,7 @@ class Servidor:
         """
 
         while True:
+            print(f"Buscando: {string_definidora}")
             resposta = self.portal_de_conexao.list_objects_v2(
                 Bucket=var_globais["bucket"],
                 Prefix=string_definidora
@@ -112,9 +113,179 @@ class DataSat:
             self,
             arquivo_de_dados: str
     ):
+        """
+        Descrição:
+            Método responsável por dar início ao banco de dados do satélite.
+        """
         self.dados = nc.Dataset(
             arquivo_de_dados
         ).variables
 
+        self.nome_da_variavel_de_clima = arquivo_de_dados.replace(".nc", "").split("-")[-1]
+
     def __str__(self):
         return str(self.dados)
+
+    def obtendo_dados_da_variavel_principal(self) -> nc.Variable:
+        """
+        Descrição:
+            Método responsável por obter as informações gerais da variável de clima
+            do arquivo de dados aberto.
+
+        Parâmetros:
+            Nenhum
+
+        Retorno:
+            Informações gerais da variável de clima.
+        """
+        for var in self.dados:
+            if self.nome_da_variavel_de_clima.startswith(
+                    var
+            ):
+                # Achamos
+                return self.dados[var]
+
+    def ampliando(
+            self,
+            matriz_de_pixels_total: MaskedArray
+    ) -> MaskedArray:
+        """
+        Descrição:
+            Método responsável por, a partir da matriz de pixels completa,
+            fazer os cortes necessários para se obter apenas a região desejada.
+
+        Parâmetros:
+            Autoexplicativos
+
+        Retorno:
+            Matriz de pixels cortada.
+        """
+
+        # Aparentemente, há o padrão de que a lat e o lon vem em:
+        informacoes_de_posicao_geoespacial: nc.Variable = self.dados[
+            "geospatial_lat_lon_extent"
+        ]
+        """
+        Ao fazermos print(informa...), obtemos:
+        
+        <class 'netCDF4._netCDF4.Variable'>
+        float32 geospatial_lat_lon_extent()
+            long_name: geospatial latitude and longitude references
+            geospatial_westbound_longitude: 156.2995
+            geospatial_northbound_latitude: 81.3282
+            geospatial_eastbound_longitude: 6.2995
+            geospatial_southbound_latitude: -81.3282
+            geospatial_lat_center: 0.0
+            geospatial_lon_center: -75.0
+            geospatial_lat_nadir: 0.0
+            geospatial_lon_nadir: -75.0
+            geospatial_lat_units: degrees_north
+            geospatial_lon_units: degrees_east
+        unlimited dimensions:
+            current shape = ()
+        filling on, default _FillValue of 9.969209968386869e+36 used
+        """
+
+        # Como sabemos que as informações vêm em uma ordem específica
+        # Não precisamos de loop para obtê-las
+        indice_dos_atributos_desejados = [1, 2, 3, 4]
+        nome_dos_atributos = informacoes_de_posicao_geoespacial.ncattrs()
+
+        lon_min, lat_max, lon_max, lat_min = [
+            informacoes_de_posicao_geoespacial.getncattr(
+                nome_dos_atributos[index]
+            ) for index in indice_dos_atributos_desejados
+        ]
+
+        """Explicação:
+        Latitude Mais Ao Norte -> lat_max
+        Latitude Mais Ao Sul -> lat_min ( Esta estará em negativo )
+        
+        Longetude Mais Ao Leste -> lon_max
+        Longetude Mais Ao Oeste -> long_min (Esta estará em negativo )
+        """
+
+        # De posse das latitudes da imagem completa, devemos setar apenas o desejado.
+        MAX_LAT = 1.91
+        MIN_LAT = -8.35
+
+        MAX_LON = -58.9
+        MIN_LON = -39.3
+
+        # Vamos criar uma função para estes valores
+        lat_desejado_max, lat_desejado_min = corretor_de_geocoordenadas(MIN_LAT, True), corretor_de_geocoordenadas(MAX_LAT, True)
+        lon_desejado_max, lon_desejado_min = corretor_de_geocoordenadas(MIN_LON, False), corretor_de_geocoordenadas(MAX_LON, False)
+
+        # Supondo linearidade, podemos:
+        n_linhas = len(
+            matriz_de_pixels_total
+        )
+        n_colunas = len(
+            matriz_de_pixels_total[0]
+        )
+        vetor_de_lat = linspace(
+            lat_min,
+            lat_max,
+            n_linhas
+        )
+        vetor_de_lon = linspace(
+            lon_min,
+            lon_max,
+            n_colunas
+        )
+
+        val_lat_desejados = where(
+            (
+                    vetor_de_lat >= lat_desejado_min
+            ) & (
+                    vetor_de_lat <= lat_desejado_max
+            )
+        )[0]
+        val_lon_desejados = where(
+            (
+                    vetor_de_lon >= lon_desejado_min
+            ) & (
+                    vetor_de_lon <= lon_desejado_max
+            )
+        )[0]
+
+        return matriz_de_pixels_total[ix_(val_lat_desejados, val_lon_desejados)]
+
+    def colhendo_pixels(
+            self,
+            dados_da_var: nc.Variable
+    ) -> list[list]:
+        """
+        Descrição:
+            Método responsável por gerar a matriz de pixels da variável.
+            Aqui devemos pegar a matriz total e buscar pela cidade de Petrópolis.
+
+        Parâmetros:
+            -> dados_da_var:
+                Resultado do método obtendo_dados_da_variavel_de_clima
+
+        Retorno:
+            Matriz de valores da variável de clima.
+        """
+
+        if not isinstance(
+                dados_da_var,
+                nc.Variable
+        ):
+            raise TypeError
+
+        matriz = dados_da_var[:]
+
+        matriz = self.ampliando(
+            matriz
+        )
+
+        pp.imshow(
+            matriz,
+            cmap="gray"
+        )
+        pp.grid(True)
+        pp.title(self.nome_da_variavel_de_clima)
+        pp.show()
+
+        return [[]]

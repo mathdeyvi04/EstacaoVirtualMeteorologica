@@ -38,7 +38,6 @@ def extraindo_informacoes_de_clima() -> list[dict] | None:
         return None
 
     for variavel_de_clima in var_globais["vars_de_clima"]:
-        print(f"Extraindo informações de {variavel_de_clima}")
         resposta_do_servidor = portal_de_conexao.extrair(
             variavel_de_clima + sufixo_codigo
         )
@@ -56,7 +55,11 @@ def extraindo_informacoes_de_clima() -> list[dict] | None:
             variavel_de_clima + ".nc"
         )
 
-        print(info_dados)
+        dados_gerais_var_clima = info_dados.obtendo_dados_da_variavel_principal()
+
+        matriz_de_pixels_total = info_dados.colhendo_pixels(
+            dados_gerais_var_clima
+        )
 
     portal_de_conexao.fechando_portao()
 

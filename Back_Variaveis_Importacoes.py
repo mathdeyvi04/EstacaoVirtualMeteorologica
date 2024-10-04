@@ -23,10 +23,13 @@ from datetime import datetime as dt
 
 # Importações de Manipulação de Dados
 import netCDF4 as nc
+from numpy.ma.core import MaskedArray
+from numpy import linspace, where, ix_
 
 # Importações de Visualização de Dados
 from PIL import Image, ImageTk
 from pprint import pprint
+from matplotlib import pyplot as pp
 
 
 # -------------------------------------------------------------------------
@@ -46,7 +49,7 @@ var_globais = {
     "bucket": "noaa-goes16",
 
     "vars_de_clima": [
-        "ABI-L2-TPWF",  # Total Precipitable Water Full Disk
+        "ABI-L2-LSTF",  # Total Precipitable Water Full Disk
     ]
 }
 
