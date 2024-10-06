@@ -33,6 +33,35 @@ motivos:
 * customtkinter ----- Interfaces Gráficas
 * pandas ----- Manipulação de Planilhas em código
 
-## Recomendação
-Caso deseje ser um contribuidor, sugiro a leitura do arquivo de
-Padroes_de_Codigo_a_Serem_Seguidos.md
+## Como fazer funcionar?
+
+#### Sobre a precursão
+O arquivo _inicializacao.py_ é o arquivo que deve ser executado
+para que a aplicação funcione.
+
+#### Sobre as Variáveis de Clima
+No arquivo *Back_Variaveis_Importacoes.py* residem as variáveis 
+e importações intrínsecas à aplicação, em especial um dicionário:
+```python
+var_globais = {
+    'vars_de_clima': [
+        'xxxx',
+        'yyyy'
+    ],
+}
+```
+Alterando os códigos que existem dentro desta lista, sendo estes
+aqueles produtos disponíveis, por exemplo: _ABI-L2-LSTF_, alteramos
+as variáveis que serão buscadas pela aplicação.
+
+#### Sobre a Obtenção de Dados 
+No arquivo *Back_Classes.py*, reside a lógica de uma classe criada
+para representar o portal de conexão com o servidor, a partir do qual
+se obtêm as imagens do satélite. 
+Pode ser que a função de download de arquivos esteja comentada para evitar
+o clico de download, verifique no arquivo *Back_FuncoesConexao.py*.
+
+#### Sobre o Fatiamento da Imagem
+No arquivo *Back_Classes.py*, há o método **ampliando()**, no qual
+há a lógica necessária para o devido fatiamento da imagem geral em 
+uma determinada desejada.
