@@ -6,7 +6,7 @@ Descrição:
 from Back_Classes import *
 
 
-def extraindo_informacoes_de_clima() -> list[dict] | None:
+def extraindo_informacoes_de_clima() -> dict | None:
     """
     Descrição:
         Função responsável por varrer as variáveis de clima
@@ -22,8 +22,10 @@ def extraindo_informacoes_de_clima() -> list[dict] | None:
         Nenhum
 
     Retorno:
-        Lista de Dicionários os quais representarão as informações de
-        cada estação.
+        Dicionário que representará as estações.
+        {
+            (lat, lon): [A, B, C, ...]
+        }
     """
 
     """Assim que isso iniciar, devemos mudar algo na tela para indicar que o travamento
@@ -37,48 +39,13 @@ def extraindo_informacoes_de_clima() -> list[dict] | None:
     if not portal_de_conexao.conexao_estabelecida:
         return None
 
-    for variavel_de_clima in var_globais["vars_de_clima"]:
-        resposta_do_servidor = portal_de_conexao.extrair(
-            variavel_de_clima + sufixo_codigo
-        )
+    """
+    LOOP DAS VARIÁVEIS DE CLIMA ENTRANDO EM CADA ESTAÇÃO.
+    """
 
-        # Sabendo não haver arquivo .nc no diretório local, podemos
-        # baixar o arquivo.
-
-        """nome_do_arquivo_baixado = portal_de_conexao.baixando_arquivo(
-            resposta_do_servidor,
-            variavel_de_clima
-        )"""
-
-        # De posse do arquivo baixado.
-        info_dados = DataSat(
-            variavel_de_clima + ".nc"
-        )
-
-        dados_gerais_var_clima = info_dados.obtendo_dados_da_variavel_principal()
-
-        matriz_de_pixels = info_dados.colhendo_pixels(
-            dados_gerais_var_clima
-        )
-
-        # De posse dos pixels, devemos fazer o devido tratamento de seus valores.
-        print(matriz_de_pixels)
-        print(len(matriz_de_pixels))
-        print(len(matriz_de_pixels[0]))
     portal_de_conexao.fechando_portao()
 
-
-
-
-
-
-
-
-
-
-
-
-
+    return {}
 
 
 

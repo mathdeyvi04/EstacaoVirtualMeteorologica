@@ -4,6 +4,24 @@ Descrição:
 """
 from Back_FuncoesConexao import *
 
+def cliquei_na_janela(
+        pos_x: int,
+        posy: int
+) -> None:
+    """
+    Descrição:
+        Função responsável por verificar se houve um clique na janela e se há um
+        frame nela. Caso sim, destruirá-o.
+
+    Parâmetros:
+        -> pos_x, pos_y:
+            Posições do clique.
+    Retorno:
+        Possível destruição de frames despostos na tela.
+    """
+
+    # Primeiro, devemos verificar se foi fora de cada um dos frames existentes.
+
 
 def alocando_estacoes(
         interface: ctk.CTk
@@ -21,6 +39,17 @@ def alocando_estacoes(
     """
 
     informacoes = extraindo_informacoes_de_clima()
+    informacoes = {
+        (100, 200): [123, 123, 123]
+    }
+
+    # De posse das informações, posso fazer o seguinte:
+    for posicao_de_estacao in informacoes:
+        Estacao(
+            interface,
+            posicao_de_estacao,
+            informacoes[posicao_de_estacao]
+        )
 
 
 def interface_principal() -> None:
@@ -114,5 +143,10 @@ def interface_principal() -> None:
     # Com o seguinte comando, conseguimos realizar a mesma função
     # com periodicidade
     # interface.after(alocando_estacoes, ...)
+
+    interface.bind(
+        "<Button-1>",
+        lambda event: cliquei_na_janela(event.x, event.y)
+    )
 
     interface.mainloop()

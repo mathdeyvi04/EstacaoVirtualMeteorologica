@@ -295,3 +295,127 @@ class DataSat:
 
         return matriz
 
+
+class Estacao:
+    """
+    Descrição:
+        Classe responsável por representar uma estação virtual.
+        Possuindo diversas funcionalidades e, por isso, tornou-se
+        necessário essa classe mais específica.
+    """
+
+    def __init__(
+            self,
+            janela: ctk.CTk,
+            posicao_da_estacao: tuple[float, float],
+            lista_de_variaveis_de_clima: list[float]
+    ):
+        """
+        Descrição:
+            Método responsável por criar nossa estação
+
+        Parâmetros:
+            -> janela:
+                Autoexplicativo
+
+            -> posicao_da_estacao:
+                Em teoria, devemos receber uma tupla de valores em latitude e longitude.
+                Baseado nisso, uma transformação deve ser feita para colocarmos a estação
+                em um ponto da interface que equivale ao correspondente no mapa!
+
+            -> lista_de_variaveis_de_clima:
+                Lista de valores numéricos correspondentes em ordem às variáveis de clima.
+        """
+
+        self.mestre = janela
+
+        # Essencialmente, será um botão.
+        self.entidade = ctk.CTkButton(
+            self.mestre,
+
+            image=ctk.CTkImage(
+                Image.open(
+                    'img_estacao.png'
+                ),
+                size=(30, 30)
+            ),
+            text="",
+
+            fg_color="#C2E5D1",
+            bg_color="#C2E5D1",
+            hover_color="#C0FFC3",
+            width=30,
+
+        )
+        # E posicionamos ele na coordenada correta.
+        # Aqui, apenas para exemplo
+        self.posicao_na_janela = posicao_da_estacao
+        self.entidade.place(
+            x=self.posicao_na_janela[0],
+            y=self.posicao_na_janela[1]
+        )
+
+        self.valores = lista_de_variaveis_de_clima
+
+        self.entidade.configure(
+            command=self.clicado
+        )
+
+    def clicado(self):
+        """
+        Descrição:
+            Método responsável por, quando o botão for clicado, uma janelinha
+            surgir e apresentar valores específicos.
+
+        Parâmetros:
+            Nenhum
+
+        Retorno:
+            Apresentação das variáveis de clima da estação.
+        """
+
+        # Ao lado do botão, devemos criar uma espécie de frame
+        X = self.posicao_na_janela[0] + 50
+        Y = self.posicao_na_janela[1]
+        W = 80
+        H = 20
+        frame_apresentador = ctk.CTkFrame(
+            self.mestre,
+            fg_color="#FFFFFF",
+            bg_color="#FFFFFF",
+            width=W,
+            height=H
+        )
+        frame_apresentador.place(
+            x=X,
+            y=Y
+        )
+
+        # Vamos apresentar as coisas
+        for valor_numerico, nome_da_variavel in zip(self.valores, var_globais["var_nomes"]):
+            ctk.CTkLabel(
+                frame_apresentador,
+                text=f"{nome_da_variavel} -> {valor_numerico}",
+                text_color="#000000",
+                font=(
+                    "Verdana",
+                    10
+                )
+            ).place(
+                x=5,
+                y=H + 30
+            )
+
+        var_globais[
+            "area_dos_frames_apresentados"
+        ].append(
+            [
+                X, Y, W, H
+            ]
+        )
+
+
+
+
+
+

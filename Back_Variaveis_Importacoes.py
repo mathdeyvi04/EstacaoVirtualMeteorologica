@@ -50,6 +50,15 @@ var_globais = {
 
     "vars_de_clima": [
         "ABI-L2-LSTF",  # Total Precipitable Water Full Disk
+    ],
+
+    "var_nomes": [
+        "Temperatura(°C)",
+        "Pressão(atm)"
+    ],
+
+    "area_dos_frames_apresentados": [
+        # Colocaremos listas [x, y, w, h]
     ]
 }
 
