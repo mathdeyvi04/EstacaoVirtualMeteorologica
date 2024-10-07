@@ -206,13 +206,14 @@ class DataSat:
         """
 
         # De posse das latitudes da imagem completa, devemos setar apenas o desejado.
-        MAX_LAT = -22.418
-        MIN_LAT = -22.55
+        """Petrópolis Centro -> Lat: -22.510072  Lon: -43.191425"""
+        MAX_LAT = 0
+        MIN_LAT = -20
 
         # Imagine que voce está no centro da terra
         # A máxima longitude é obtida indo cada vez mais para o oeste.
-        MAX_LON = -43.232
-        MIN_LON = -43.146
+        MAX_LON = -80
+        MIN_LON = -20
 
         # Vamos criar uma função para estes valores
         lat_desejado_max, lat_desejado_min = corretor_de_geocoordenadas(MIN_LAT, True), corretor_de_geocoordenadas(MAX_LAT, True)
@@ -282,7 +283,7 @@ class DataSat:
             matriz
         )
 
-        """# Caso testes futuros sejam necessários, é importante descomentar
+        # Caso testes futuros sejam necessários, é importante descomentar
         # essa parte para termos acessos aos gráficos gerados pelo fatiamento.
         pp.imshow(
             matriz,
@@ -290,7 +291,7 @@ class DataSat:
         )
         pp.grid(True)
         pp.title(self.nome_da_variavel_de_clima)
-        pp.show()"""
+        pp.show()
 
         return matriz
 

@@ -57,10 +57,14 @@ def extraindo_informacoes_de_clima() -> list[dict] | None:
 
         dados_gerais_var_clima = info_dados.obtendo_dados_da_variavel_principal()
 
-        matriz_de_pixels_total = info_dados.colhendo_pixels(
+        matriz_de_pixels = info_dados.colhendo_pixels(
             dados_gerais_var_clima
         )
 
+        # De posse dos pixels, devemos fazer o devido tratamento de seus valores.
+        print(matriz_de_pixels)
+        print(len(matriz_de_pixels))
+        print(len(matriz_de_pixels[0]))
     portal_de_conexao.fechando_portao()
 
 
