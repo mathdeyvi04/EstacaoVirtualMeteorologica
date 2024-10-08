@@ -20,19 +20,48 @@ def alocando_estacoes(
         Estações Em Condições de Serem Usadas.
     """
 
-    informacoes = extraindo_informacoes_de_clima()
+    # Devemos verificar se há botões
+    widgets = interface.winfo_children()[::-1]
+    if len(widgets) > 1:
+        for elemento in widgets:
+            if isinstance(elemento, ctk.CTkButton):
+                elemento.destroy()
+            else:
+                if isinstance(elemento, ctk.CTkLabel):
+                    elemento.destroy()
+                break
+
+    informacoes, instante = extraindo_informacoes_de_clima()
     informacoes = {
-        (100, 200): [123, 123, 123]
+        (300, 400): [12, 34]
     }
 
+    # Podemos então colocar um aviso
+    ctk.CTkLabel(
+        interface,
+        text=f"Última atualização: {instante}",
+        text_color="#000000",
+        font=("Verdana", 12),
+
+        bg_color='#C2E5D1'
+    ).place(
+        x=0,
+        y=interface.winfo_height() - 140
+    )
+
     # De posse das informações, posso fazer o seguinte:
+    i = 1
     for posicao_de_estacao in informacoes:
         Estacao(
             interface,
             posicao_de_estacao,
-            informacoes[posicao_de_estacao]
+            informacoes[posicao_de_estacao],
+            i
         )
+        i += 1
 
+    # Recursão
+    interface.after(10000, lambda: alocando_estacoes(interface))
 
 def interface_principal() -> None:
     """
@@ -122,13 +151,5 @@ def interface_principal() -> None:
     # Aqui, iniciamos a brincadeira.
     alocando_estacoes(interface)
 
-    # Com o seguinte comando, conseguimos realizar a mesma função
-    # com periodicidade
-    # interface.after(alocando_estacoes, ...)
-
-    interface.bind(
-        "<Button-1>",
-        lambda event: cliquei_na_janela(event.x, event.y, interface)
-    )
 
     interface.mainloop()

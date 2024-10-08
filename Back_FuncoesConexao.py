@@ -26,6 +26,7 @@ def extraindo_informacoes_de_clima() -> dict | None:
         {
             (lat, lon): [A, B, C, ...]
         }
+        E o horário que ocorreu esta ultima busca.
     """
 
     """Assim que isso iniciar, devemos mudar algo na tela para indicar que o travamento
@@ -45,7 +46,7 @@ def extraindo_informacoes_de_clima() -> dict | None:
 
     portal_de_conexao.fechando_portao()
 
-    return {}
+    return {}, horario_da_ultima_atualizacao
 
 
 

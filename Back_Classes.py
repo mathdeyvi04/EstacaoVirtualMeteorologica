@@ -308,7 +308,8 @@ class Estacao:
             self,
             janela: ctk.CTk,
             posicao_da_estacao: tuple[float, float],
-            lista_de_variaveis_de_clima: list[float]
+            lista_de_variaveis_de_clima: list[float],
+            numero: int
     ):
         """
         Descrição:
@@ -325,6 +326,9 @@ class Estacao:
 
             -> lista_de_variaveis_de_clima:
                 Lista de valores numéricos correspondentes em ordem às variáveis de clima.
+
+            -> numero:
+                Apenas um indicador de qual estação estamos tratando
         """
 
         self.mestre = janela
@@ -360,6 +364,8 @@ class Estacao:
         self.entidade.configure(
             command=self.clicado
         )
+
+        self.numero = numero
 
     def clicado(self):
         """
@@ -397,8 +403,8 @@ class Estacao:
 
         pos = 3
         for valor_numerico, nome_variavel in zip(
-            self.valores,
-            var_globais["var_nomes"]
+                self.valores,
+                var_globais["var_nomes"]
         ):
             ctk.CTkLabel(
                 frame_apresentador,
@@ -418,6 +424,30 @@ class Estacao:
             )
 
         # Devemos criar um botão capaz de destruí-lo.
+
+        ctk.CTkButton(
+            frame_apresentador,
+            text="Histórico",
+            text_color="#000000",
+            fg_color='#fafafa',
+            border_width=2,
+            border_color="#000000",
+            font=("Verdana", 10, 'bold'),
+
+            width=W // 2,
+            height=20,
+            hover_color='#ccb4b4',
+
+            command=lambda: self.historico()
+        ).place(
+            x=5,
+            y=H
+        )
+
+        H += 25
+        frame_apresentador.configure(
+            height=H
+        )
 
         ctk.CTkButton(
             frame_apresentador,
@@ -443,7 +473,25 @@ class Estacao:
             height=H
         )
 
+    def historico(self):
+        """
+        Descrição:
+            Método responsável por apresentar uma nova tela dispondo
+            gráficos representantes dos valores da estação com o tempo.
+        """
 
+        # Primeiro, verificar se o arquivo de planilha existe.
+        if not isfile(
+            diretorios["Banco Geral"] + f"/historico_estacao{self.numero}.xlsx"
+        ):
+            mb.showwarning(
+                "Cuidado",
+                "Não há histórico disponível para esta estação, foi criado agora."
+            )
 
+            open(
+                diretorios["Banco Geral"] + f"/historico_estacao{self.numero}.xlsx",
+                "x"
+            ).close(
 
-
+            )
