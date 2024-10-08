@@ -377,43 +377,71 @@ class Estacao:
         # Ao lado do botão, devemos criar uma espécie de frame
         X = self.posicao_na_janela[0] + 50
         Y = self.posicao_na_janela[1]
-        W = 80
-        H = 20
+        W = 135
+        H = 0
         frame_apresentador = ctk.CTkFrame(
             self.mestre,
             fg_color="#FFFFFF",
             bg_color="#FFFFFF",
             width=W,
-            height=H
+            height=H,
+
+            border_color="#000000",
+            border_width=2,
+            corner_radius=0
         )
         frame_apresentador.place(
             x=X,
             y=Y
         )
 
-        # Vamos apresentar as coisas
-        for valor_numerico, nome_da_variavel in zip(self.valores, var_globais["var_nomes"]):
+        pos = 3
+        for valor_numerico, nome_variavel in zip(
+            self.valores,
+            var_globais["var_nomes"]
+        ):
             ctk.CTkLabel(
                 frame_apresentador,
-                text=f"{nome_da_variavel} -> {valor_numerico}",
                 text_color="#000000",
-                font=(
-                    "Verdana",
-                    10
-                )
+                font=("Verdana", 10),
+                text=f"{nome_variavel} -> {valor_numerico}"
+
             ).place(
                 x=5,
-                y=H + 30
+                y=pos
             )
 
-        var_globais[
-            "area_dos_frames_apresentados"
-        ].append(
-            [
-                X, Y, W, H
-            ]
+            pos += 20
+            H += 25
+            frame_apresentador.configure(
+                height=H
+            )
+
+        # Devemos criar um botão capaz de destruí-lo.
+
+        ctk.CTkButton(
+            frame_apresentador,
+            text="Fechar",
+            text_color="#000000",
+            fg_color='#fafafa',
+            border_width=2,
+            border_color="#000000",
+            font=("Verdana", 10, 'bold'),
+
+            width=W // 2,
+            height=20,
+            hover_color='#ccb4b4',
+
+            command=lambda: frame_apresentador.destroy()
+        ).place(
+            x=5,
+            y=H
         )
 
+        H += 25
+        frame_apresentador.configure(
+            height=H
+        )
 
 
 

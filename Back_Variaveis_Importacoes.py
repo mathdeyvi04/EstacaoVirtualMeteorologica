@@ -8,6 +8,7 @@ Descrição:
 # Importações de Interface
 from tkinter import messagebox as mb
 import customtkinter as ctk
+from tkinter.ttk import Treeview
 
 # Importações de Servidor
 from mypy_boto3_s3 import S3Client
@@ -56,9 +57,5 @@ var_globais = {
         "Temperatura(°C)",
         "Pressão(atm)"
     ],
-
-    "area_dos_frames_apresentados": [
-        # Colocaremos listas [x, y, w, h]
-    ]
 }
 

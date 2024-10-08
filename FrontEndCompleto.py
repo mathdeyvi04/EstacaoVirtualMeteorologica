@@ -4,24 +4,6 @@ Descrição:
 """
 from Back_FuncoesConexao import *
 
-def cliquei_na_janela(
-        pos_x: int,
-        posy: int
-) -> None:
-    """
-    Descrição:
-        Função responsável por verificar se houve um clique na janela e se há um
-        frame nela. Caso sim, destruirá-o.
-
-    Parâmetros:
-        -> pos_x, pos_y:
-            Posições do clique.
-    Retorno:
-        Possível destruição de frames despostos na tela.
-    """
-
-    # Primeiro, devemos verificar se foi fora de cada um dos frames existentes.
-
 
 def alocando_estacoes(
         interface: ctk.CTk
@@ -146,7 +128,7 @@ def interface_principal() -> None:
 
     interface.bind(
         "<Button-1>",
-        lambda event: cliquei_na_janela(event.x, event.y)
+        lambda event: cliquei_na_janela(event.x, event.y, interface)
     )
 
     interface.mainloop()
