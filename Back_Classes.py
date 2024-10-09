@@ -3,6 +3,8 @@ Descrição:
     Código responsável por gerenciar as classes que usaremos, são estas
     a representação do servidor e a representação do banco de dados.
 """
+import DateTime
+
 from Back_FuncoesBasicas import *
 
 
@@ -309,6 +311,7 @@ class Estacao:
             janela: ctk.CTk,
             posicao_da_estacao: tuple[float, float],
             lista_de_variaveis_de_clima: list[float],
+            instante: str,
             numero: int
     ):
         """
@@ -365,7 +368,9 @@ class Estacao:
             command=self.clicado
         )
 
-        self.numero = numero
+        self.atualizar_historico(
+            instante
+        )
 
     def clicado(self):
         """
@@ -492,6 +497,14 @@ class Estacao:
             open(
                 diretorios["Banco Geral"] + f"/historico_estacao{self.numero}.xlsx",
                 "x"
-            ).close(
+            ).close()
 
-            )
+    def atualizar_historico(
+            self,
+            momento_instantaneo: str
+    ):
+        """
+        Descrição:
+            Método responsável por verificar se já é possível salvar os valores obtidos
+            pela estação.
+        """

@@ -57,5 +57,8 @@ var_globais = {
         "Temperatura(°C)",
         "Pressão(atm)"
     ],
+
+    # segundos
+    "periodo_estacao": 60
 }
 

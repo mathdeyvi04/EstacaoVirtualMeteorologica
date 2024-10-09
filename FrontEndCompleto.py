@@ -33,7 +33,7 @@ def alocando_estacoes(
 
     informacoes, instante = extraindo_informacoes_de_clima()
     informacoes = {
-        (300, 400): [12, 34]
+        (100, 100): [12, 34]
     }
 
     # Podemos então colocar um aviso
@@ -56,12 +56,13 @@ def alocando_estacoes(
             interface,
             posicao_de_estacao,
             informacoes[posicao_de_estacao],
+            instante,
             i
         )
         i += 1
 
     # Recursão
-    interface.after(10000, lambda: alocando_estacoes(interface))
+    interface.after(var_globais["periodo_estacao"] * pow(10, 3), lambda: alocando_estacoes(interface))
 
 def interface_principal() -> None:
     """
