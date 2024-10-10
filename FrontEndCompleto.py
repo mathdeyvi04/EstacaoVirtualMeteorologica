@@ -32,6 +32,7 @@ def alocando_estacoes(
                 break
 
     informacoes, instante = extraindo_informacoes_de_clima()
+
     informacoes = {
         (100, 100): [12, 34]
     }
@@ -39,14 +40,14 @@ def alocando_estacoes(
     # Podemos então colocar um aviso
     ctk.CTkLabel(
         interface,
-        text=f"Última atualização: {instante}",
+        text=f" Última atualização: {instante}",
         text_color="#000000",
         font=("Verdana", 12),
 
-        bg_color='#C2E5D1'
+        bg_color='#C2E5D1',
     ).place(
         x=0,
-        y=interface.winfo_height() - 140
+        y=interface.winfo_height() - 165
     )
 
     # De posse das informações, posso fazer o seguinte:
@@ -63,6 +64,7 @@ def alocando_estacoes(
 
     # Recursão
     interface.after(var_globais["periodo_estacao"] * pow(10, 3), lambda: alocando_estacoes(interface))
+
 
 def interface_principal() -> None:
     """
@@ -129,7 +131,7 @@ def interface_principal() -> None:
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
 
-    comp, alt = 600, 450
+    comp, alt = 650, 550
     interface = ctk.CTk()
     interface.title(
         "Apresentação Petrópolis"
@@ -151,6 +153,5 @@ def interface_principal() -> None:
 
     # Aqui, iniciamos a brincadeira.
     alocando_estacoes(interface)
-
 
     interface.mainloop()

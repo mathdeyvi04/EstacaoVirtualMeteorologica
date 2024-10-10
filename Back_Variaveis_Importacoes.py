@@ -8,7 +8,7 @@ Descrição:
 # Importações de Interface
 from tkinter import messagebox as mb
 import customtkinter as ctk
-from tkinter.ttk import Treeview
+from tkinter.ttk import Treeview, Style
 
 # Importações de Servidor
 from mypy_boto3_s3 import S3Client
@@ -50,7 +50,7 @@ var_globais = {
     "bucket": "noaa-goes16",
 
     "vars_de_clima": [
-        "ABI-L2-LSTF",  # Total Precipitable Water Full Disk
+        "ABI-L2-LSTF",  #
     ],
 
     "var_nomes": [
@@ -59,6 +59,6 @@ var_globais = {
     ],
 
     # segundos
-    "periodo_estacao": 60
+    "periodo_estacao": 5
 }
 

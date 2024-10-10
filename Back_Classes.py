@@ -348,9 +348,9 @@ class Estacao:
             ),
             text="",
 
-            fg_color="#C2E5D1",
-            bg_color="#C2E5D1",
-            hover_color="#C0FFC3",
+            fg_color="#0D251B",
+            bg_color="#0D251B",
+            hover_color="#55543F",
             width=30,
 
         )
@@ -372,6 +372,10 @@ class Estacao:
             instante
         )
 
+        self.id = numero
+
+        self.se_ja_foi_clicado = False
+
     def clicado(self):
         """
         Descrição:
@@ -385,48 +389,70 @@ class Estacao:
             Apresentação das variáveis de clima da estação.
         """
 
+        if self.se_ja_foi_clicado:
+            return None
+        else:
+            self.se_ja_foi_clicado = True
+
         # Ao lado do botão, devemos criar uma espécie de frame
         X = self.posicao_na_janela[0] + 50
         Y = self.posicao_na_janela[1]
-        W = 135
-        H = 0
+        W = 153
+        H = 120
         frame_apresentador = ctk.CTkFrame(
             self.mestre,
             fg_color="#FFFFFF",
             bg_color="#FFFFFF",
             width=W,
             height=H,
-
-            border_color="#000000",
-            border_width=2,
-            corner_radius=0
         )
         frame_apresentador.place(
             x=X,
             y=Y
         )
 
-        pos = 3
-        for valor_numerico, nome_variavel in zip(
+        colunas = ["Medidas", "Valor"]
+        tv = Treeview(
+            frame_apresentador,
+            columns=colunas,
+            show="headings"
+        )
+
+        tams = [
+            130,
+            50
+        ]
+
+        a = 10
+        est = Style()
+        est.configure("Treeview", font=('Verdana', a, 'bold'))
+        est.configure("Treeview.Heading", font=('Verdana', a, 'bold'))
+
+        for col, TAM in zip(colunas, tams):
+            tv.heading(
+                col,
+                text=col,
+                anchor="center"
+            )
+            tv.column(
+                col,
+                width=TAM,
+                anchor="center"
+            )
+
+        i = 0
+        for conj in zip(
                 self.valores,
                 var_globais["var_nomes"]
         ):
-            ctk.CTkLabel(
-                frame_apresentador,
-                text_color="#000000",
-                font=("Verdana", 10),
-                text=f"{nome_variavel} -> {valor_numerico}"
+            tv.insert("", "end", values=conj[::-1])
+            i += 1
 
-            ).place(
-                x=5,
-                y=pos
-            )
-
-            pos += 20
-            H += 25
-            frame_apresentador.configure(
-                height=H
-            )
+        tv.place(
+            x=5,
+            y=5,
+            height=35 * i
+        )
 
         # Devemos criar um botão capaz de destruí-lo.
 
@@ -439,19 +465,14 @@ class Estacao:
             border_color="#000000",
             font=("Verdana", 10, 'bold'),
 
-            width=W // 2,
+            width=sum(tams) - 35,
             height=20,
             hover_color='#ccb4b4',
 
             command=lambda: self.historico()
         ).place(
             x=5,
-            y=H
-        )
-
-        H += 25
-        frame_apresentador.configure(
-            height=H
+            y=35 * i
         )
 
         ctk.CTkButton(
@@ -463,20 +484,25 @@ class Estacao:
             border_color="#000000",
             font=("Verdana", 10, 'bold'),
 
-            width=W // 2,
+            width=sum(tams) - 35,
             height=20,
             hover_color='#ccb4b4',
 
-            command=lambda: frame_apresentador.destroy()
+            command=lambda: self.destruir(frame_apresentador)
         ).place(
             x=5,
-            y=H
+            y=35 * i + 25
         )
 
-        H += 25
         frame_apresentador.configure(
-            height=H
+            height=35 * i + 50
         )
+
+    def destruir(self, frame: ctk.CTkFrame):
+        """Método responsável por destruir a apresentação base do botão"""
+
+        self.se_ja_foi_clicado = False
+        frame.destroy()
 
     def historico(self):
         """
@@ -487,7 +513,7 @@ class Estacao:
 
         # Primeiro, verificar se o arquivo de planilha existe.
         if not isfile(
-            diretorios["Banco Geral"] + f"/historico_estacao{self.numero}.xlsx"
+                diretorios["Banco Geral"] + f"/historico_estacao{self.id}.xlsx"
         ):
             mb.showwarning(
                 "Cuidado",
@@ -495,9 +521,11 @@ class Estacao:
             )
 
             open(
-                diretorios["Banco Geral"] + f"/historico_estacao{self.numero}.xlsx",
+                diretorios["Banco Geral"] + f"/historico_estacao{self.id}.xlsx",
                 "x"
             ).close()
+
+        # Agora, devemos abrir uma nova janela, apresentando os dados da planilha.
 
     def atualizar_historico(
             self,
