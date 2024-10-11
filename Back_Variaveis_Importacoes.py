@@ -20,12 +20,14 @@ from botocore.client import Config
 from os.path import isdir, isfile
 from os import mkdir
 from datetime import datetime as dt
+from datetime import timedelta
 
 
 # Importações de Manipulação de Dados
 import netCDF4 as nc
 from numpy.ma.core import MaskedArray
 from numpy import linspace, where, ix_
+import pandas as pd
 
 # Importações de Visualização de Dados
 from PIL import Image, ImageTk
@@ -47,18 +49,21 @@ caminhos = {
 
 # Variáveis Concorrentes
 var_globais = {
+    # Variáveis Necessárias Para Obtenção de Dados
     "bucket": "noaa-goes16",
-
     "vars_de_clima": [
         "ABI-L2-LSTF",  #
     ],
-
     "var_nomes": [
         "Temperatura(°C)",
         "Pressão(atm)"
     ],
 
-    # segundos
-    "periodo_estacao": 5
+    # Variáveis Necessárias Para Periodicidade
+    ""ultima_atualizacao_na_planilha"": None,
+    "periodo_de_criacao_da_estacao": 60,  # EM SEGUNDOS
+    "periodo_de_salvamento_de_dados_da_escacao": 1   # EM HORAS
+
+    #
 }
 

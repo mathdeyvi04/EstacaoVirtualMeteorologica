@@ -3,7 +3,10 @@ Descrição:
     Código responsável por gerenciar as classes que usaremos, são estas
     a representação do servidor e a representação do banco de dados.
 """
+import datetime
+
 import DateTime
+import pandas as pd
 
 from Back_FuncoesBasicas import *
 
@@ -311,7 +314,7 @@ class Estacao:
             janela: ctk.CTk,
             posicao_da_estacao: tuple[float, float],
             lista_de_variaveis_de_clima: list[float],
-            instante: str,
+            instante: dt,
             numero: int
     ):
         """
@@ -362,19 +365,20 @@ class Estacao:
             y=self.posicao_na_janela[1]
         )
 
+        # Atributos Necessários
         self.valores = lista_de_variaveis_de_clima
+        self.se_ja_foi_clicado = False
+        self.id = numero
+        self.horario_e_data = instante
+        self.caminho_a_ser_buscado = diretorios[
+                                         "Banco Geral"
+                                     ] + f"/Estacao{self.id}/historico{instante.year}.xlsx"
 
+        # Funções Inerentes
         self.entidade.configure(
             command=self.clicado
         )
-
-        self.atualizar_historico(
-            instante
-        )
-
-        self.id = numero
-
-        self.se_ja_foi_clicado = False
+        self.atualizar_historico()
 
     def clicado(self):
         """
@@ -504,6 +508,40 @@ class Estacao:
         self.se_ja_foi_clicado = False
         frame.destroy()
 
+    def verificacao_de_existencia_de_historico(self):
+        """
+        Descrição:
+            Método responsável por fazer a devidamente verificação
+            de existência dos arquivos inerentes à estação.
+        """
+
+        dir_a_ser_buscado = "/".join(self.caminho_a_ser_buscado.split("/")[:-1])
+        if not isdir(
+                dir_a_ser_buscado
+        ):
+            mb.showwarning(
+                "Cuidado",
+                "Não havia histórico disponível para esta estação, foi criado agora."
+            )
+
+            mkdir(
+                dir_a_ser_buscado
+            )
+
+            # Como não havia, podemos criar também
+            open(
+                self.caminho_a_ser_buscado,
+                "x"
+            ).close()
+
+        if not isfile(
+                self.caminho_a_ser_buscado
+        ):
+            open(
+                self.caminho_a_ser_buscado,
+                "x"
+            ).close()
+
     def historico(self):
         """
         Descrição:
@@ -512,27 +550,60 @@ class Estacao:
         """
 
         # Primeiro, verificar se o arquivo de planilha existe.
-        if not isfile(
-                diretorios["Banco Geral"] + f"/historico_estacao{self.id}.xlsx"
-        ):
-            mb.showwarning(
-                "Cuidado",
-                "Não há histórico disponível para esta estação, foi criado agora."
-            )
-
-            open(
-                diretorios["Banco Geral"] + f"/historico_estacao{self.id}.xlsx",
-                "x"
-            ).close()
+        self.verificacao_de_existencia_de_historico()
 
         # Agora, devemos abrir uma nova janela, apresentando os dados da planilha.
+        print("Vejo que ela existe")
 
     def atualizar_historico(
-            self,
-            momento_instantaneo: str
+            self
     ):
         """
         Descrição:
             Método responsável por verificar se já é possível salvar os valores obtidos
-            pela estação.
+            pela estação. Caso sim, atualiza-os.
         """
+
+        self.verificacao_de_existencia_de_historico()
+
+        if var_globais["ultima_atualizacao_na_planilha"] is None:
+            # Então quer dizer que é a primeira.
+            # Devemos verificar dentro do arquivo quando foi o
+            # último incremento. A partir disso, venceremos.
+
+            # Abrindo a planilha
+            arquivo_de_historico: pd.DataFrame = pd.read_excel(
+                self.caminho_a_ser_buscado
+            )
+
+            # Obter último instante
+            ultimo_momento_guardado = dt.strptime(
+                arquivo_de_historico["INSTANTE"].iloc[-1] + f"/{self.horario_e_data.year}",
+                "%H:%M:%S %d/%m/%Y"
+            )
+
+            # Com isso verificar diferença de tempo
+            delta_T_medido = self.horario_e_data - ultimo_momento_guardado
+
+            # Devemos verificar se a diferença de tempo é maior que o necessário
+            delta_T_necessario = timedelta(
+                hours=var_globais["periodo_de_salvamento_de_dados_da_escacao"]
+            )
+
+            if delta_T_medido > delta_T_necessario:
+                # Então devemos atualizar a planilha
+
+
+            # Independente do que fizemos
+            # Devemos atualizar a data da última atualização
+            var_globais["ultima_atualizacao_na_planilha"] = ultimo_momento_guardado
+
+
+
+
+
+
+        else:
+            # Caso já tenha dito uma última atualização, devemos conseguir
+            # verificar se já passou o delta_T necessário. Caso sim, safamos.
+            pass

@@ -32,7 +32,7 @@ def extraindo_informacoes_de_clima() -> tuple[dict, str] | None:
     """Assim que isso iniciar, devemos mudar algo na tela para indicar que o travamento
     é devido à busca de novos dados."""
 
-    sufixo_codigo, horario_da_ultima_atualizacao = obtendo_instante_mais_recente()
+    sufixo_codigo, horario_e_data_atualizacao = obtendo_instante_mais_recente()
 
     # Devemos fazer a conexão do portal e a extração dos arquivos .nc
     portal_de_conexao = Servidor()
@@ -46,7 +46,7 @@ def extraindo_informacoes_de_clima() -> tuple[dict, str] | None:
 
     portal_de_conexao.fechando_portao()
 
-    return {}, horario_da_ultima_atualizacao
+    return {}, horario_e_data_atualizacao
 
 
 

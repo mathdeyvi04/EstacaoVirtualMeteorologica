@@ -31,13 +31,15 @@ def alocando_estacoes(
                     elemento.destroy()
                 break
 
-    informacoes, instante = extraindo_informacoes_de_clima()
+    informacoes, horario_e_data_ultima_atualizacao = extraindo_informacoes_de_clima()
+    horario_e_data_ultima_atualizacao: datetime
 
     informacoes = {
         (100, 100): [12, 34]
     }
 
     # Podemos então colocar um aviso
+    instante = f"{horario_e_data_ultima_atualizacao.hour}:{horario_e_data_ultima_atualizacao.minute}:{horario_e_data_ultima_atualizacao.second}"
     ctk.CTkLabel(
         interface,
         text=f" Última atualização: {instante}",
@@ -57,13 +59,16 @@ def alocando_estacoes(
             interface,
             posicao_de_estacao,
             informacoes[posicao_de_estacao],
-            instante,
+            horario_e_data_ultima_atualizacao,
             i
         )
         i += 1
 
     # Recursão
-    interface.after(var_globais["periodo_estacao"] * pow(10, 3), lambda: alocando_estacoes(interface))
+    interface.after(
+        var_globais["periodo_de_criacao_da_estacao"] * pow(10, 3),
+        lambda: alocando_estacoes(interface)
+    )
 
 
 def interface_principal() -> None:
