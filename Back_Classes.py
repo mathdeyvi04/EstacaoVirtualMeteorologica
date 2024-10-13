@@ -3,9 +3,6 @@ Descrição:
     Código responsável por gerenciar as classes que usaremos, são estas
     a representação do servidor e a representação do banco de dados.
 """
-import datetime
-
-import DateTime
 import pandas as pd
 
 from Back_FuncoesBasicas import *
@@ -515,6 +512,29 @@ class Estacao:
             de existência dos arquivos inerentes à estação.
         """
 
+        def criar_historico() -> None:
+            """
+            Descrição:
+                Função responsável por criar o histórico da estação.
+
+            Parâmetros:
+                Nenhum
+
+            Retorno:
+                Criação do arquivo de histórico em planilha
+            """
+
+            pd.DataFrame(
+                columns=[
+                    "INSTANTE"
+                ] + var_globais[
+                    "var_nomes"
+                ]
+            ).to_excel(
+                self.caminho_a_ser_buscado,
+                index=False
+            )
+
         dir_a_ser_buscado = "/".join(self.caminho_a_ser_buscado.split("/")[:-1])
         if not isdir(
                 dir_a_ser_buscado
@@ -529,18 +549,12 @@ class Estacao:
             )
 
             # Como não havia, podemos criar também
-            open(
-                self.caminho_a_ser_buscado,
-                "x"
-            ).close()
+            criar_historico()
 
         if not isfile(
                 self.caminho_a_ser_buscado
         ):
-            open(
-                self.caminho_a_ser_buscado,
-                "x"
-            ).close()
+            criar_historico()
 
     def historico(self):
         """
@@ -553,7 +567,7 @@ class Estacao:
         self.verificacao_de_existencia_de_historico()
 
         # Agora, devemos abrir uma nova janela, apresentando os dados da planilha.
-        print("Vejo que ela existe")
+        
 
     def atualizar_historico(
             self
@@ -562,48 +576,95 @@ class Estacao:
         Descrição:
             Método responsável por verificar se já é possível salvar os valores obtidos
             pela estação. Caso sim, atualiza-os.
+
+            Há uma lista de strings que marcarão os horários que desejamos salvar.
+            Entretanto, o instante em que conseguimos uma resposta do servidor não é
+            completamente certeiro.
+
+            Há toda uma lógica.
         """
 
         self.verificacao_de_existencia_de_historico()
 
-        if var_globais["ultima_atualizacao_na_planilha"] is None:
-            # Então quer dizer que é a primeira.
-            # Devemos verificar dentro do arquivo quando foi o
-            # último incremento. A partir disso, venceremos.
-
-            # Abrindo a planilha
-            arquivo_de_historico: pd.DataFrame = pd.read_excel(
+        # Obtendo ultimo momento salvo
+        if var_globais[
+            "ultimo_momento_salvo_na_planilha"
+        ] is None:
+            """
+            No caso, precisamos pegar o último momento salvo na planilha.
+            Para evitar abrimos ela duas vezes, salvamos temporariamente ela.
+            
+            Mais a frente, caso precisemos salvar, usaremos.
+            Caso não, apenas apagaremos. E como o 'ultimo_momento_salvo_na_planilha'
+            não será mais None, isso não acontecerá novamente
+            """
+            temporariamente: pd.DataFrame = pd.read_excel(
                 self.caminho_a_ser_buscado
             )
 
-            # Obter último instante
-            ultimo_momento_guardado = dt.strptime(
-                arquivo_de_historico["INSTANTE"].iloc[-1] + f"/{self.horario_e_data.year}",
+            # Obtemos o valor desejado
+            try:
+                ultimo_momento_salvo_str = str(temporariamente["INSTANTE"].iloc[-1]) + f"/{self.horario_e_data.year}"
+                var_globais[
+                    "ultimo_momento_salvo_na_planilha"
+                ] = dt.strptime(
+                    ultimo_momento_salvo_str,
+                    "%H:%M:%S %d/%m/%Y"
+                )
+            except (IndexError, TypeError, ValueError):
+                var_globais[
+                    "ultimo_momento_salvo_na_planilha"
+                ] = dt.strptime(
+                    "00:00:00 1/1/2020",
+                    "%H:%M:%S %d/%m/%Y"
+                )
+
+            # E então salvamos o histórico
+            var_globais["historico_temporario"] = temporariamente
+
+        string_de_atualizacao_para_data = f" {self.horario_e_data.day}/{self.horario_e_data.month}/{self.horario_e_data.year}"
+        for horario_desejado_em_str in var_globais["momentos_desejados_de_salvamento"]:
+            # Obtendo uma variável de tempo
+            horario_desejado_em_str += string_de_atualizacao_para_data
+            horario_desejado = dt.strptime(
+                horario_desejado_em_str,
                 "%H:%M:%S %d/%m/%Y"
             )
 
-            # Com isso verificar diferença de tempo
-            delta_T_medido = self.horario_e_data - ultimo_momento_guardado
+            # Afinal, os valores anteriores ao último momento salvo JÁ foram salvos
+            if horario_desejado > var_globais[
+                "ultimo_momento_salvo_na_planilha"
+            ]:
+                # Devemos verificar se já atingimos o instante
+                if self.horario_e_data > horario_desejado:
+                    # Caso sim:
+                    # Salvamos na planilha
+                    arquivo_historico = var_globais.get(
+                        "historico_temporario"
+                    )
 
-            # Devemos verificar se a diferença de tempo é maior que o necessário
-            delta_T_necessario = timedelta(
-                hours=var_globais["periodo_de_salvamento_de_dados_da_escacao"]
-            )
+                    if arquivo_historico is None:
+                        # Então abrimos
+                        arquivo_historico = pd.read_excel(
+                            self.caminho_a_ser_buscado
+                        )
 
-            if delta_T_medido > delta_T_necessario:
-                # Então devemos atualizar a planilha
+                    arquivo_historico.loc[
+                        len(arquivo_historico)
+                    ] = [
+                            self.horario_e_data.strftime(
+                                "%H:%M:%S %d/%m"
+                            )
+                        ] + self.valores
 
+                    arquivo_historico.to_excel(
+                        self.caminho_a_ser_buscado,
+                        index=False
+                    )
 
-            # Independente do que fizemos
-            # Devemos atualizar a data da última atualização
-            var_globais["ultima_atualizacao_na_planilha"] = ultimo_momento_guardado
+                    # Atualizamos o último momento salvo
+                    var_globais[
+                        "ultimo_momento_salvo_na_planilha"
+                    ] = self.horario_e_data
 
-
-
-
-
-
-        else:
-            # Caso já tenha dito uma última atualização, devemos conseguir
-            # verificar se já passou o delta_T necessário. Caso sim, safamos.
-            pass
+                    break

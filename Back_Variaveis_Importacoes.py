@@ -20,8 +20,7 @@ from botocore.client import Config
 from os.path import isdir, isfile
 from os import mkdir
 from datetime import datetime as dt
-from datetime import timedelta
-
+from datetime import timedelta, time
 
 # Importações de Manipulação de Dados
 import netCDF4 as nc
@@ -33,7 +32,6 @@ import pandas as pd
 from PIL import Image, ImageTk
 from pprint import pprint
 from matplotlib import pyplot as pp
-
 
 # -------------------------------------------------------------------------
 
@@ -59,11 +57,14 @@ var_globais = {
         "Pressão(atm)"
     ],
 
-    # Variáveis Necessárias Para Periodicidade
-    ""ultima_atualizacao_na_planilha"": None,
+    # Variáveis Necessárias Para Periodicidade de Funções
     "periodo_de_criacao_da_estacao": 60,  # EM SEGUNDOS
-    "periodo_de_salvamento_de_dados_da_escacao": 1   # EM HORAS
+    "momentos_desejados_de_salvamento": [
+        # Strings em Formato de Horário
+        "13:15:00"
+    ],
+
+    "ultimo_momento_salvo_na_planilha": None
 
     #
 }
-
