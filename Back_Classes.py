@@ -456,7 +456,8 @@ class Estacao:
         )
 
         # Devemos criar um botão capaz de destruí-lo.
-
+        se_ja_existe_janela = ctk.BooleanVar(frame_apresentador)
+        se_ja_existe_janela.set(False)
         ctk.CTkButton(
             frame_apresentador,
             text="Histórico",
@@ -470,7 +471,7 @@ class Estacao:
             height=20,
             hover_color='#ccb4b4',
 
-            command=lambda: self.historico()
+            command=lambda: self.historico(se_ja_existe_janela)
         ).place(
             x=5,
             y=35 * i
@@ -526,10 +527,10 @@ class Estacao:
 
             pd.DataFrame(
                 columns=[
-                    "INSTANTE"
-                ] + var_globais[
-                    "var_nomes"
-                ]
+                            "INSTANTE"
+                        ] + var_globais[
+                            "var_nomes"
+                        ]
             ).to_excel(
                 self.caminho_a_ser_buscado,
                 index=False
@@ -556,18 +557,296 @@ class Estacao:
         ):
             criar_historico()
 
-    def historico(self):
+    def historico(
+            self,
+            se_ja_existe_janela_de_grafico: ctk.BooleanVar
+    ) -> None:
         """
         Descrição:
             Método responsável por apresentar uma nova tela dispondo
             gráficos representantes dos valores da estação com o tempo.
         """
 
+        def apresentando_grafico(
+                janela_atual: ctk.CTkToplevel,
+                dados_completos: list[str],
+                opcao_temporal_desejada: str,
+                opcao_de_variavel_desejada: str
+        ) -> None:
+            """
+            Descrição:
+                Função responsável por plotar o gráfico do histórico dentro da janela.
+                Para isso, ela realiza uma filtragem dos dados para termos apenas o
+                desejado.
+
+            Parâmetros:
+                Autoexplicativos.
+
+            Retorno:
+                Gráfico plotado.
+            """
+
+            def filtrando(
+                    index_da_var: int
+            ) -> tuple[list[str], list[float]]:
+                """
+                Descrição:
+                    Função responsável por filtrar os dados conforme a necessidade temporal.
+
+                Parâmetros:
+                    -> index_da_var:
+                        Indice indicador de qual variável deveremos pegar
+
+                Retorno:
+                    Tupla de duas listas, sendo uma string e outra de float
+                """
+
+                vetor_x, vetor_y = [], []
+
+                match opcao_temporal_desejada:
+                    case "Momentaneamente":
+                        # Desejamos colocar todas os dados momentâneos
+
+                        for lista_de_dados in dados_completos:
+
+                            vetor_x.append(
+                                lista_de_dados[0]
+                            )
+                            vetor_y.append(
+                                float(lista_de_dados[index_da_var])
+                            )
+
+                    case "Diariamente":
+                        dia = ''
+                        for lista_de_dados in dados_completos:
+
+                            dia_mes = lista_de_dados[0].split(" ")[-1]
+                            dia_da_string = dia_mes.split("/")[0]
+
+                            if dia == dia_da_string:
+                                # Então devemos atualizar o valor deste dia
+                                vetor_y[-1] += lista_de_dados[index_da_var]
+
+                            else:
+                                dia = dia_da_string
+                                vetor_x.append(
+                                    dia_mes
+                                )
+                                vetor_y.append(
+                                    lista_de_dados[index_da_var]
+                                )
+
+                    case "Mensalmente":
+                        mes = ''
+                        for lista_de_dados in dados_completos:
+                            mes_da_string = lista_de_dados[0].split(" ")[-1].split("/")[-1]
+
+                            if mes == mes_da_string:
+                                # Atualizamos o último valor
+                                vetor_y[-1] += lista_de_dados[index_da_var]
+
+                            else:
+                                mes = mes_da_string
+                                vetor_y.append(
+                                    lista_de_dados[index_da_var]
+                                )
+                                vetor_x.append(
+                                    mes
+                                )
+
+                    case _:
+                        return vetor_x, vetor_y
+
+                vetor_x.pop()
+                vetor_y.pop()
+
+                return vetor_x, vetor_y
+
+            if "" in {opcao_temporal_desejada, opcao_de_variavel_desejada}:
+                return None
+
+            # Devemos verificar se já há algum gráfico plotado
+            ultimo_elemento = janela_atual.winfo_children()[-1]
+            if isinstance(
+                    ultimo_elemento,
+                    Canvas
+            ):
+                ultimo_elemento.destroy()
+
+            # A partir da seleção de opção temporal e opção de variável,
+            # devemos fazer a filtragem de dados.
+            index_da_var_desejada = 1  # Começamos com 1 devido à coluna chamada INSTANTE
+            for nome_de_var in var_globais["var_nomes"]:
+                if nome_de_var == opcao_de_variavel_desejada:
+                    break
+
+                index_da_var_desejada += 1
+
+            eixo_x, eixo_y = filtrando(
+                index_da_var_desejada
+            )
+
+            # Criando a figura adequada
+            figura_a_ser_disposta = Figure(
+                figsize=(10, 10)
+            )
+            figura_a_ser_disposta.subplots_adjust(
+                left=0.1,
+                right=0.97,
+                top=0.95,
+                bottom=0.3
+            )
+            axes = figura_a_ser_disposta.add_subplot(111)
+
+            # Controlando a quantidade de labels que serão
+            # apresentadas
+
+            axes.bar(
+                eixo_x,
+                eixo_y
+            )
+            axes.set_xlabel("Tempo")
+            axes.set_ylabel("Valores")
+            axes.grid(True)
+            axes.set_xticklabels(
+                eixo_x,
+                rotation=40,
+                ha='right'
+            )
+
+            canvas = FigureCanvasTkAgg(
+                figura_a_ser_disposta,
+                janela_atual
+            )
+            canvas.draw()
+
+            canvas.get_tk_widget().place(
+                x=5,
+                y=90,
+                width=600,
+                height=420
+            )
+
+        def criando_tela_para_disposicao(
+                dados_completos: list[str]
+        ) -> None:
+            """
+            Descrição:
+                Função responsável pela criação e ajuste inicial da tela
+                de disposição de dados do histórico da estação
+
+            Parâmetros:
+                -> dados_completos:
+                    Lista de todas as linhas.
+
+            Retorno:
+                Subjanela ligada à interface principal
+            """
+            # Agora, devemos abrir uma nova janela, apresentando os dados da planilha.
+            subjan = ctk.CTkToplevel(
+                self.mestre
+            )
+            subjan.title(f"Apresentando Histórico Estação {self.id}")
+
+            subjan.geometry(
+                "500x430"
+            )
+            subjan.focus_force()
+
+            ctk.CTkLabel(
+                subjan,
+                text="Tipo de Exibição Temporal: ",
+
+                font=("Verdana", 12)
+            ).place(x=5, y=5)
+
+            combobox_de_apresentacao_temporal = ctk.CTkComboBox(
+                subjan,
+                values=[
+                    "",
+                    "Momentaneamente",
+                    "Diariamente",
+                    "Mensalmente"
+                ],
+                text_color="black",
+                font=("Verdana", 12),
+
+                fg_color="white",
+                corner_radius=0,
+                width=150,
+                height=20
+            )
+            combobox_de_apresentacao_temporal.place(
+                x=170,
+                y=8
+            )
+
+            ctk.CTkLabel(
+                subjan,
+                text="Variável de Clima a ser Exibida: ",
+
+                font=("Verdana", 12)
+            ).place(x=5, y=35)
+
+            combobox_de_var_de_clima = ctk.CTkComboBox(
+                subjan,
+                values=[""] + var_globais["var_nomes"],
+                text_color="black",
+                font=("Verdana", 12),
+
+                fg_color="white",
+                corner_radius=0,
+                width=150,
+                height=20
+            )
+            combobox_de_var_de_clima.place(
+                x=200,
+                y=5 + 35
+            )
+
+            combobox_de_var_de_clima.configure(
+                command=lambda event: apresentando_grafico(
+                    subjan,
+                    dados_completos,
+                    combobox_de_apresentacao_temporal.get(),
+                    combobox_de_var_de_clima.get()
+                )
+            )
+
+            combobox_de_apresentacao_temporal.configure(
+                command=lambda event: apresentando_grafico(
+                    subjan,
+                    dados_completos,
+                    combobox_de_apresentacao_temporal.get(),
+                    combobox_de_var_de_clima.get()
+                )
+            )
+
+            subjan.protocol(
+                "WM_DELETE_WINDOW",
+                # Assim manipulamos melhor a sua destruição
+                lambda: (
+                    se_ja_existe_janela_de_grafico.set(False),
+                    subjan.destroy()
+                )
+            )
+
+        if se_ja_existe_janela_de_grafico.get():
+            return None
+        else:
+            se_ja_existe_janela_de_grafico.set(True)
+
         # Primeiro, verificar se o arquivo de planilha existe.
         self.verificacao_de_existencia_de_historico()
 
-        # Agora, devemos abrir uma nova janela, apresentando os dados da planilha.
-        
+        # Extraindo todos os dados que poderão ser usados
+        dados_totais_extraidos = pd.read_excel(
+            self.caminho_a_ser_buscado
+        ).values.tolist()
+
+        criando_tela_para_disposicao(
+            dados_totais_extraidos
+        )
 
     def atualizar_historico(
             self
@@ -648,6 +927,8 @@ class Estacao:
                         arquivo_historico = pd.read_excel(
                             self.caminho_a_ser_buscado
                         )
+                    else:
+                        var_globais.pop("historico_temporario")
 
                     arquivo_historico.loc[
                         len(arquivo_historico)

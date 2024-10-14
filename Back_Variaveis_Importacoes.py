@@ -9,6 +9,7 @@ Descrição:
 from tkinter import messagebox as mb
 import customtkinter as ctk
 from tkinter.ttk import Treeview, Style
+from tkinter import Canvas
 
 # Importações de Servidor
 from mypy_boto3_s3 import S3Client
@@ -32,6 +33,9 @@ import pandas as pd
 from PIL import Image, ImageTk
 from pprint import pprint
 from matplotlib import pyplot as pp
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.ticker import MaxNLocator
 
 # -------------------------------------------------------------------------
 
