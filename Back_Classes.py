@@ -832,7 +832,7 @@ class Estacao:
             canvas.get_tk_widget().place(
                 x=5,
                 y=125,
-                width=612,
+                width=700,
                 height=405
             )
 
@@ -858,7 +858,7 @@ class Estacao:
             subjan.title(f"Apresentando Histórico Estação {self.id}")
 
             subjan.geometry(
-                "500x430"
+                "565x430"
             )
             subjan.focus_force()
 

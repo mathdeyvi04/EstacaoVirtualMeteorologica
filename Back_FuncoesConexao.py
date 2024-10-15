@@ -37,9 +37,6 @@ def extraindo_informacoes_de_clima() -> tuple[dict, dt] | None:
     # Devemos fazer a conexão do portal e a extração dos arquivos .nc
     portal_de_conexao = Servidor()
 
-    if not portal_de_conexao.conexao_estabelecida:
-        return None
-
     """
     LOOP DAS VARIÁVEIS DE CLIMA ENTRANDO EM CADA ESTAÇÃO.
     """

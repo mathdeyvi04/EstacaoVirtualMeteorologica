@@ -35,7 +35,6 @@ from pprint import pprint
 from matplotlib import pyplot as pp
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.ticker import MaxNLocator
 
 # -------------------------------------------------------------------------
 
@@ -46,7 +45,8 @@ diretorios = {
 }
 
 caminhos = {
-    "Petropolis": "./petropolis.png"
+    "Petropolis": "./petropolis.png",
+    "Imagem_da_Estacao": "./img_estacao.png"
 }
 
 # Variáveis Concorrentes
