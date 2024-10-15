@@ -567,11 +567,12 @@ class Estacao:
             gráficos representantes dos valores da estação com o tempo.
         """
 
-        def apresentando_grafico(
+        def apresentando_grafico_do_historico(
                 janela_atual: ctk.CTkToplevel,
                 dados_completos: list[str],
                 opcao_temporal_desejada: str,
-                opcao_de_variavel_desejada: str
+                opcao_de_variavel_desejada: str,
+                opcao_de_tempo_decorrido: str
         ) -> None:
             """
             Descrição:
@@ -585,6 +586,100 @@ class Estacao:
             Retorno:
                 Gráfico plotado.
             """
+
+            def retirando_dados_inuteis(
+                    dados: list[str],
+                    momento_a_filtrar: str
+            ) -> list[str]:
+                """
+                Descrição:
+                    Função responsável por, a partir de quanto tempo se deseja
+                    visualizar, retirar os dados que não fazem parte.
+
+                    Haverá um algoritmo para a lógica de ignorar.
+                    Atenção à ele.
+
+                Parâmetros:
+                    Autoexplicativos.
+
+                Retorno:
+                    Lista de Dados Atualizada.
+                """
+
+                def ignorar_dados(
+                        x_dias_no_passado: int
+                ) -> list[str]:
+                    """
+                    Descrição:
+                        Função responsável por guardar o algoritmo para ignorarmos
+                        as informações desejadas.
+
+                        Se x = 1, vamos pegar o deste dia e o do dia anterior.
+                        Se x = 7, vamos pegar o deste dia e de 7 dias anteriores.
+                        Se x = 30, mesma lógica.
+
+                    Parâmetros:
+                        -> x_dias_no_passado:
+                            Valor que indicará quanto desejamos voltar no passado.
+
+                    Retorno:
+                        Lista de informações desejadas.
+                    """
+
+                    # Lembre-se que os primeiros elementos
+                    # da lista são os primeiros que foram adicionados
+                    # Então devemos fazer nossa busca a partir
+                    # do final
+                    indice_da_linha = -1
+                    while True:
+                        if len(dados[indice_da_linha][0]) > 4:
+
+                            data_em_string = dados[indice_da_linha][0] + f"/{self.horario_e_data.year}"
+
+                            obj_dt = dt.strptime(
+                                data_em_string,
+                                "%H:%M:%S %d/%m/%Y"
+                            )
+
+                            diferenca_em_dias = abs(
+                                (
+                                        self.horario_e_data - obj_dt
+                                ).days
+                            )
+
+                            if diferenca_em_dias > x_dias_no_passado:
+                                # Então já temos todx o desejado
+
+                                return dados[indice_da_linha:]
+                        else:
+                            # Então teremos um vazio
+                            dados.pop(indice_da_linha)
+                            indice_da_linha += 1
+
+                        indice_da_linha -= 1
+
+                match momento_a_filtrar:
+
+                    case "Tudo":
+                        return dados
+
+                    case "Último Dia":
+                        return ignorar_dados(
+                            1
+                        )
+
+                    case "Última Semana":
+                        return ignorar_dados(
+                            7
+                        )
+
+                    case "Último Mês":
+                        return ignorar_dados(
+                            30
+                        )
+
+                    case _:
+                        return [""]
 
             def filtrando(
                     index_da_var: int
@@ -609,56 +704,58 @@ class Estacao:
 
                         for lista_de_dados in dados_completos:
 
-                            vetor_x.append(
-                                lista_de_dados[0]
-                            )
-                            vetor_y.append(
-                                float(lista_de_dados[index_da_var])
-                            )
+                            if len(lista_de_dados[0]) > 5:
+                                vetor_x.append(
+                                    lista_de_dados[0]
+                                )
+                                vetor_y.append(
+                                    float(lista_de_dados[index_da_var])
+                                )
 
                     case "Diariamente":
                         dia = ''
                         for lista_de_dados in dados_completos:
 
-                            dia_mes = lista_de_dados[0].split(" ")[-1]
-                            dia_da_string = dia_mes.split("/")[0]
+                            if len(lista_de_dados[0]) > 5:
 
-                            if dia == dia_da_string:
-                                # Então devemos atualizar o valor deste dia
-                                vetor_y[-1] += lista_de_dados[index_da_var]
+                                dia_mes = lista_de_dados[0].split(" ")[-1]
+                                dia_da_string = dia_mes.split("/")[0]
 
-                            else:
-                                dia = dia_da_string
-                                vetor_x.append(
-                                    dia_mes
-                                )
-                                vetor_y.append(
-                                    lista_de_dados[index_da_var]
-                                )
+                                if dia == dia_da_string:
+                                    # Então devemos atualizar o valor deste dia
+                                    vetor_y[-1] += lista_de_dados[index_da_var]
+
+                                else:
+                                    dia = dia_da_string
+                                    vetor_x.append(
+                                        dia_mes
+                                    )
+                                    vetor_y.append(
+                                        lista_de_dados[index_da_var]
+                                    )
 
                     case "Mensalmente":
                         mes = ''
                         for lista_de_dados in dados_completos:
-                            mes_da_string = lista_de_dados[0].split(" ")[-1].split("/")[-1]
 
-                            if mes == mes_da_string:
-                                # Atualizamos o último valor
-                                vetor_y[-1] += lista_de_dados[index_da_var]
+                            if len(lista_de_dados[0]) > 5:
+                                mes_da_string = lista_de_dados[0].split(" ")[-1].split("/")[-1]
 
-                            else:
-                                mes = mes_da_string
-                                vetor_y.append(
-                                    lista_de_dados[index_da_var]
-                                )
-                                vetor_x.append(
-                                    mes
-                                )
+                                if mes == mes_da_string:
+                                    # Atualizamos o último valor
+                                    vetor_y[-1] += lista_de_dados[index_da_var]
+
+                                else:
+                                    mes = mes_da_string
+                                    vetor_y.append(
+                                        lista_de_dados[index_da_var]
+                                    )
+                                    vetor_x.append(
+                                        mes
+                                    )
 
                     case _:
                         return vetor_x, vetor_y
-
-                vetor_x.pop()
-                vetor_y.pop()
 
                 return vetor_x, vetor_y
 
@@ -681,6 +778,13 @@ class Estacao:
                     break
 
                 index_da_var_desejada += 1
+
+            # Devemos retirar também todx o tempo que não se
+            # encaixa no tempo desejado.
+            dados_completos = retirando_dados_inuteis(
+                dados_completos,
+                opcao_de_tempo_decorrido
+            )
 
             eixo_x, eixo_y = filtrando(
                 index_da_var_desejada
@@ -722,9 +826,9 @@ class Estacao:
 
             canvas.get_tk_widget().place(
                 x=5,
-                y=90,
-                width=600,
-                height=420
+                y=125,
+                width=612,
+                height=405
             )
 
         def criando_tela_para_disposicao(
@@ -804,22 +908,43 @@ class Estacao:
                 y=5 + 35
             )
 
+            ctk.CTkLabel(
+                subjan,
+                text="Quanto Tempo a Ser Exibido: ",
+
+                font=("Verdana", 12)
+            ).place(x=5, y=70)
+            combobox_de_tempo = ctk.CTkComboBox(
+                subjan,
+                values=[
+                    "Tudo",
+                    "Último Dia",
+                    "Última Semana",
+                    "Último Mês"
+                ],
+                text_color="black",
+                font=("Verdana", 12),
+
+                fg_color="white",
+                corner_radius=0,
+                width=150,
+                height=20
+            )
+            combobox_de_tempo.place(
+                x=190,
+                y=5 + 70
+            )
+
             combobox_de_var_de_clima.configure(
-                command=lambda event: apresentando_grafico(
-                    subjan,
-                    dados_completos,
-                    combobox_de_apresentacao_temporal.get(),
-                    combobox_de_var_de_clima.get()
-                )
+                command=lambda event: apresentando_grafico_do_historico(subjan, dados_completos, combobox_de_apresentacao_temporal.get(), combobox_de_var_de_clima.get(), combobox_de_tempo.get())
             )
 
             combobox_de_apresentacao_temporal.configure(
-                command=lambda event: apresentando_grafico(
-                    subjan,
-                    dados_completos,
-                    combobox_de_apresentacao_temporal.get(),
-                    combobox_de_var_de_clima.get()
-                )
+                command=lambda event: apresentando_grafico_do_historico(subjan, dados_completos, combobox_de_apresentacao_temporal.get(), combobox_de_var_de_clima.get(), combobox_de_tempo.get())
+            )
+
+            combobox_de_tempo.configure(
+                command=lambda event: apresentando_grafico_do_historico(subjan, dados_completos, combobox_de_apresentacao_temporal.get(), combobox_de_var_de_clima.get(), combobox_de_tempo.get())
             )
 
             subjan.protocol(
