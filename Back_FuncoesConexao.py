@@ -6,7 +6,7 @@ Descrição:
 from Back_Classes import *
 
 
-def extraindo_informacoes_de_clima() -> tuple[dict, str] | None:
+def extraindo_informacoes_de_clima() -> tuple[dict, dt] | None:
     """
     Descrição:
         Função responsável por varrer as variáveis de clima

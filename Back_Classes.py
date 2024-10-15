@@ -21,51 +21,56 @@ class Servidor:
     """
 
     def __init__(self):
-        try:
-            self.portal_de_conexao: S3Client = bt.client(
-                "s3",
-                config=Config(signature_version=UNSIGNED)
-            )
-            self.conexao_estabelecida = True
-        except Exception as error:
-            mb.showerror(
-                "ERROR",
-                f"Houve erro ao tentar conectar-se com servidor: {error}"
-            )
-            self.conexao_estabelecida = False
+        """
+        Descrição:
+            Método responsável pela obtenção do portal de conexão.
+            Mesmo que não se tenha internet, não será esse método que
+            resultará em um erro, será o 'extrair'.
+        """
+        self.portal_de_conexao: S3Client = bt.client(
+            "s3",
+            config=Config(signature_version=UNSIGNED)
+        )
 
     def extrair(
             self,
             string_definidora: str
-    ) -> dict:
+    ) -> dict | None:
         """
         Descrição:
             Método responsável por obter os dados de satélite mais recentes.
 
         Parâmetros:
             -> string_definidora:
-                String para buscarmos conteúdos
+                String para buscarmos conteúdos desejados. Não deve ser apenas o código
+                da variável.
 
         Retorno:
             Dicionário que representa os arquivos de dados.
         """
 
-        while True:
-            print(f"Buscando: {string_definidora}")
-            resposta = self.portal_de_conexao.list_objects_v2(
-                Bucket=var_globais["bucket"],
-                Prefix=string_definidora
-            )
-
-            if "Contents" not in resposta:
-                string_definidora = consertando_sufixo(
-                    string_definidora
+        try:
+            while True:
+                print(f"Buscando: {string_definidora}")
+                resposta = self.portal_de_conexao.list_objects_v2(
+                    Bucket=var_globais["bucket"],
+                    Prefix=string_definidora
                 )
-            else:
-                break
 
-        # Temos a garantia que há resposta
-        return resposta["Contents"][-1]
+                if "Contents" not in resposta:
+                    string_definidora = consertando_sufixo(
+                        string_definidora
+                    )
+                else:
+                    # Temos a garantia que há resposta
+                    return resposta["Contents"][-1]
+
+        except Exception as error:
+            mb.showerror(
+                "ERROR",
+                "Não foi possível fazer a conexão com o servidor."
+            )
+            return None
 
     def baixando_arquivo(
             self,
