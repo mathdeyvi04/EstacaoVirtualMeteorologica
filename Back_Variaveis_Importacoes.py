@@ -28,6 +28,7 @@ import netCDF4 as nc
 from numpy.ma.core import MaskedArray
 from numpy import linspace, where, ix_
 import numpy as np
+from pyproj import Proj
 import pandas as pd
 
 # Importações de Visualização de Dados
