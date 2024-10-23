@@ -39,6 +39,29 @@ def extraindo_informacoes_de_clima() -> dict | None:
     if not portal_de_conexao.conexao_estabelecida:
         return None
 
+    for codigo_de_variavel_de_clima in var_globais[
+        "vars_de_clima"
+    ]:
+        resposta_do_servidor = portal_de_conexao.extrair(
+            "ABI-L2-LSTF/2024/270"
+        )
+
+        nome_do_arquivo_temporario_criado = portal_de_conexao.baixando_arquivo(
+            resposta_do_servidor,
+            codigo_de_variavel_de_clima
+        )
+
+        conj_de_dados = DataSat(
+            nome_do_arquivo_temporario_criado
+        )
+
+        conj_de_dados.colhendo_pixels(
+            conj_de_dados.obtendo_dados_da_variavel_principal()
+        )
+
+        # Para não entupir de arquivos
+        # conj_de_dados.auto_destruicao()
+
     for variavel_de_clima in var_globais["vars_de_clima"]:
         resposta_do_servidor = portal_de_conexao.extrair(
             variavel_de_clima + sufixo_codigo
@@ -71,16 +94,5 @@ def extraindo_informacoes_de_clima() -> dict | None:
 
     # return dicionario de estações
 
-
-
-
-
-
-
-
-
-
-
-
-
+    return {}, horario_e_data_atualizacao
 

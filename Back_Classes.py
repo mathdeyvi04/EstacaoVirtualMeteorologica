@@ -117,9 +117,13 @@ class DataSat:
         Descrição:
             Método responsável por dar início ao banco de dados do satélite.
         """
-        self.dados = nc.Dataset(
+        self.arq_geral = nc.Dataset(
             arquivo_de_dados
-        ).variables
+        )
+
+        self.dados = self.arq_geral.variables
+
+        self.nome_do_arquivo_base = arquivo_de_dados
 
         self.nome_da_variavel_de_clima = arquivo_de_dados.replace(".nc", "").split("-")[-1]
 
@@ -154,6 +158,53 @@ class DataSat:
             Método responsável por, a partir da matriz de pixels completa,
             fazer os cortes necessários para se obter apenas a região desejada.
 
+            Super Descrição Detalhada:
+                print(
+                informacoes_de_posicao_geoespacial
+            )
+            ------------------------------------------------------------
+            <class 'netCDF4._netCDF4.Variable'>
+            float32 geospatial_lat_lon_extent()
+                long_name: geospatial latitude and longitude references
+                geospatial_westbound_longitude: 156.2995
+                geospatial_northbound_latitude: 81.3282
+                geospatial_eastbound_longitude: 6.2995
+                geospatial_southbound_latitude: -81.3282
+                geospatial_lat_center: 0.0
+                geospatial_lon_center: -75.0
+                geospatial_lat_nadir: 0.0
+                geospatial_lon_nadir: -75.0
+                geospatial_lat_units: degrees_north
+                geospatial_lon_units: degrees_east
+            unlimited dimensions:
+                current shape = ()
+            filling on, default _FillValue of 9.969209968386869e+36 used
+            -------------------------------------------------------------
+
+            Análise:
+                Sendo assim, imagine a matriz A(linha, coluna).
+
+                Experimentalmente:    A[x:y] -> modifica a latitude!
+                Isso significa que cada linha representa uma latitude única.
+                E como a unidade de medida comentada é degraus ao norte, podemos
+                concluir que a A(0, coluna) indica a latitude 81.3282° e A(-1, coluna)
+                indica a mesma latitude ao Sul. Como há um total de 1086 linhas,
+                concluímos que **cada linha representa 0.14977 graus de latitude**.
+
+                Sabendo disso, concluímos que cada coluna representa uma longitude.
+                Experimentalmente:  A(linha, x -> y) -> modifica a longitude!
+                E como a unidade é degraus À LESTE, aumentar a coluna significa
+                aumentar a longitude. Logo, A(linha, 0) indica a longitude -156.2995°
+                e A(linha, -1) indica -6.2995°. Concluímos que **cada coluna
+                representa 0.13812 graus de longitude à leste**.
+
+            Discussão:
+                O cerne do problema é: A TERRA NÃO É PLANA.
+                Oq temos é uma imagem 2D da Terra que é uma esfera.
+                Como já tentamos muitas formas de solucionar, e não deu certo.
+                Agasalhamos a necessidade de usar uma biblioteca externa.
+
+
         Parâmetros:
             Autoexplicativos
 
@@ -161,98 +212,84 @@ class DataSat:
             Matriz de pixels cortada.
         """
 
+        def isomorfismo(
+                vetor: tuple[float, float],
+                indo_para_lat_lon: bool = False
+        ) -> tuple[float, float]:
+            """
+            Descrição:
+                Função responsável por fornecer um isomorfismo entre
+                as coordenadas da imagem 2D e as coordenadas geográficas.
+
+            Parâmetros:
+                -> val_1, val_2:
+                    Podendo ser tanto (x, y) os índices na matriz imagem
+                    Ou (lat, lon) sendo as coordendas.
+
+                -> indo_para_lat_lon:
+                    Se True:
+                        (x, y) --> (lat, lon)
+                    Se False:
+                        (lat, lon) --> (x, y)
+
+            Retorno:
+                Vetor Correspondente.
+            """
+            pass
+
         # Aparentemente, há o padrão de que a lat e o lon vem em:
         informacoes_de_posicao_geoespacial: nc.Variable = self.dados[
             "geospatial_lat_lon_extent"
         ]
-        """
-        Ao fazermos print(informa...), obtemos:
-        
-        <class 'netCDF4._netCDF4.Variable'>
-        float32 geospatial_lat_lon_extent()
-            long_name: geospatial latitude and longitude references
-            geospatial_westbound_longitude: 156.2995
-            geospatial_northbound_latitude: 81.3282
-            geospatial_eastbound_longitude: 6.2995
-            geospatial_southbound_latitude: -81.3282
-            geospatial_lat_center: 0.0
-            geospatial_lon_center: -75.0
-            geospatial_lat_nadir: 0.0
-            geospatial_lon_nadir: -75.0
-            geospatial_lat_units: degrees_north
-            geospatial_lon_units: degrees_east
-        unlimited dimensions:
-            current shape = ()
-        filling on, default _FillValue of 9.969209968386869e+36 used
-        """
 
-        # Como sabemos que as informações vêm em uma ordem específica
-        # Não precisamos de loop para obtê-las
-        indice_dos_atributos_desejados = [1, 2, 3, 4]
-        nome_dos_atributos = informacoes_de_posicao_geoespacial.ncattrs()
-
-        lon_min, lat_max, lon_max, lat_min = [
-            informacoes_de_posicao_geoespacial.getncattr(
-                nome_dos_atributos[index]
-            ) for index in indice_dos_atributos_desejados
+        informacoes_de_projecao: nc.Variable = self.dados[
+            "goes_imager_projection"
         ]
+        ALTURA_SAT = 35786023.0
 
-        """Explicação:
-        Latitude Mais Ao Norte -> lat_max
-        Latitude Mais Ao Sul -> lat_min ( Esta estará em negativo )
-        
-        Longetude Mais Ao Leste -> lon_max
-        Longetude Mais Ao Oeste -> long_min (Esta estará em negativo )
+        projetor = Proj(
+            proj="geos",
+            h=ALTURA_SAT,
+            sweep="x",
+            lon_0=self.dados["nominal_satellite_subpoint_lon"][:],
+            ellps="WGS84"
+        )
+
+        x = self.dados["x"][:]
+        y = self.dados["y"][:]
+
+        lon_mais_oeste = -156.2995
+        lat_mais_norte = 81.3282
+        lon_mais_leste = -6.2995
+        lat_mais_sul = -81.3282
+
         """
+        lons = lon_mais_oeste + (lon_mais_leste - lon_mais_oeste) * (x - x.min()) / (x.max() - x.min())
+        lats = lat_mais_sul + (lat_mais_norte - lat_mais_sul) * (y - y.min()) / (y.max() - y.min())"""
 
-        # De posse das latitudes da imagem completa, devemos setar apenas o desejado.
-        """Petrópolis Centro -> Lat: -22.510072  Lon: -43.191425"""
-        MAX_LAT = 0
-        MIN_LAT = -20
+        def remap_to_lat_lon(x1, y1):
+            # Longitude: mapear x do intervalo [-max(x), max(x)] para [lon_mais_oeste, lon_mais_leste]
+            lon = np.interp(x1, (x1.min(), x1.max()), (lon_mais_oeste, lon_mais_leste))
 
-        # Imagine que voce está no centro da terra
-        # A máxima longitude é obtida indo cada vez mais para o oeste.
-        MAX_LON = -80
-        MIN_LON = -20
+            # Latitude: mapear y do intervalo [-max(y), max(y)] para [lat_mais_sul, lat_mais_norte]
+            lat = np.interp(y1, (y1.min(), y1.max()), (lat_mais_sul, lat_mais_norte))
 
-        # Vamos criar uma função para estes valores
-        lat_desejado_max, lat_desejado_min = corretor_de_geocoordenadas(MIN_LAT, True), corretor_de_geocoordenadas(MAX_LAT, True)
-        lon_desejado_max, lon_desejado_min = corretor_de_geocoordenadas(MIN_LON, False), corretor_de_geocoordenadas(MAX_LON, False)
+            return lon, lat
 
-        # Supondo linearidade, podemos:
-        n_linhas = len(
-            matriz_de_pixels_total
-        )
-        n_colunas = len(
-            matriz_de_pixels_total[0]
-        )
-        vetor_de_lat = linspace(
-            lat_min,
-            lat_max,
-            n_linhas
-        )
-        vetor_de_lon = linspace(
-            lon_min,
-            lon_max,
-            n_colunas
-        )
+        # Criar uma grade com as coordenadas x e y
+        X, Y = np.meshgrid(x, y)
 
-        val_lat_desejados = where(
-            (
-                    vetor_de_lat >= lat_desejado_min
-            ) & (
-                    vetor_de_lat <= lat_desejado_max
-            )
-        )[0]
-        val_lon_desejados = where(
-            (
-                    vetor_de_lon >= lon_desejado_min
-            ) & (
-                    vetor_de_lon <= lon_desejado_max
-            )
-        )[0]
+        # Remapear para latitude e longitude com base nos limites conhecidos
+        lons, lats = remap_to_lat_lon(X, Y)
 
-        return matriz_de_pixels_total[ix_(val_lat_desejados, val_lon_desejados)]
+        pp.figure(figsize=(10, 6))
+        pp.pcolormesh(lons, lats, matriz_de_pixels_total, cmap="gray")
+        pp.xlabel("Longitude")
+        pp.ylabel("Latitude")
+        pp.grid(True)
+        pp.show()
+
+        return matriz_de_pixels_total
 
     def colhendo_pixels(
             self,
@@ -295,3 +332,794 @@ class DataSat:
 
         return matriz
 
+    def auto_destruicao(
+            self
+    ) -> None:
+        """
+        Descrição:
+            Método responsável por fechar o arquivo corretamente
+            e destruí-lo.
+        """
+
+        self.arq_geral.close()
+        remove(
+            self.nome_do_arquivo_base
+        )
+
+
+class Estacao:
+    """
+    Descrição:
+        Classe responsável por representar uma estação virtual.
+        Possuindo diversas funcionalidades e, por isso, tornou-se
+        necessário essa classe mais específica.
+    """
+
+    def __init__(
+            self,
+            janela: ctk.CTk,
+            posicao_da_estacao: tuple[float, float],
+            lista_de_variaveis_de_clima: list[float],
+            instante: dt,
+            numero: int
+    ):
+        """
+        Descrição:
+            Método responsável por criar nossa estação
+
+        Parâmetros:
+            -> janela:
+                Autoexplicativo
+
+            -> posicao_da_estacao:
+                Em teoria, devemos receber uma tupla de valores em latitude e longitude.
+                Baseado nisso, uma transformação deve ser feita para colocarmos a estação
+                em um ponto da interface que equivale ao correspondente no mapa!
+
+            -> lista_de_variaveis_de_clima:
+                Lista de valores numéricos correspondentes em ordem às variáveis de clima.
+
+            -> numero:
+                Apenas um indicador de qual estação estamos tratando
+        """
+
+        self.mestre = janela
+
+        # Essencialmente, será um botão.
+        self.entidade = ctk.CTkButton(
+            self.mestre,
+
+            image=ctk.CTkImage(
+                Image.open(
+                    'img_estacao.png'
+                ),
+                size=(30, 30)
+            ),
+            text="",
+
+            fg_color="#0D251B",
+            bg_color="#0D251B",
+            hover_color="#55543F",
+            width=30,
+
+        )
+        # E posicionamos ele na coordenada correta.
+        # Aqui, apenas para exemplo
+        self.posicao_na_janela = posicao_da_estacao
+        self.entidade.place(
+            x=self.posicao_na_janela[0],
+            y=self.posicao_na_janela[1]
+        )
+
+        # Atributos Necessários
+        self.valores = lista_de_variaveis_de_clima
+        self.se_ja_foi_clicado = False
+        self.id = numero
+        self.horario_e_data = instante
+        self.caminho_a_ser_buscado = diretorios[
+                                         "Banco Geral"
+                                     ] + f"/Estacao{self.id}/historico{instante.year}.xlsx"
+
+        # Funções Inerentes
+        self.entidade.configure(
+            command=self.clicado
+        )
+        self.atualizar_historico()
+
+    def clicado(self):
+        """
+        Descrição:
+            Método responsável por, quando o botão for clicado, uma janelinha
+            surgir e apresentar valores específicos.
+
+        Parâmetros:
+            Nenhum
+
+        Retorno:
+            Apresentação das variáveis de clima da estação.
+        """
+
+        if self.se_ja_foi_clicado:
+            return None
+        else:
+            self.se_ja_foi_clicado = True
+
+        # Ao lado do botão, devemos criar uma espécie de frame
+        X = self.posicao_na_janela[0] + 50
+        Y = self.posicao_na_janela[1]
+        W = 153
+        H = 120
+        frame_apresentador = ctk.CTkFrame(
+            self.mestre,
+            fg_color="#FFFFFF",
+            bg_color="#FFFFFF",
+            width=W,
+            height=H,
+        )
+        frame_apresentador.place(
+            x=X,
+            y=Y
+        )
+
+        colunas = ["Medidas", "Valor"]
+        tv = Treeview(
+            frame_apresentador,
+            columns=colunas,
+            show="headings"
+        )
+
+        tams = [
+            130,
+            50
+        ]
+
+        a = 10
+        est = Style()
+        est.configure("Treeview", font=('Verdana', a, 'bold'))
+        est.configure("Treeview.Heading", font=('Verdana', a, 'bold'))
+
+        for col, TAM in zip(colunas, tams):
+            tv.heading(
+                col,
+                text=col,
+                anchor="center"
+            )
+            tv.column(
+                col,
+                width=TAM,
+                anchor="center"
+            )
+
+        i = 0
+        for conj in zip(
+                self.valores,
+                var_globais["var_nomes"]
+        ):
+            tv.insert("", "end", values=conj[::-1])
+            i += 1
+
+        tv.place(
+            x=5,
+            y=5,
+            height=35 * i
+        )
+
+        # Devemos criar um botão capaz de destruí-lo.
+        se_ja_existe_janela = ctk.BooleanVar(frame_apresentador)
+        se_ja_existe_janela.set(False)
+        ctk.CTkButton(
+            frame_apresentador,
+            text="Histórico",
+            text_color="#000000",
+            fg_color='#fafafa',
+            border_width=2,
+            border_color="#000000",
+            font=("Verdana", 10, 'bold'),
+
+            width=sum(tams) - 35,
+            height=20,
+            hover_color='#ccb4b4',
+
+            command=lambda: self.historico(se_ja_existe_janela)
+        ).place(
+            x=5,
+            y=35 * i
+        )
+
+        ctk.CTkButton(
+            frame_apresentador,
+            text="Fechar",
+            text_color="#000000",
+            fg_color='#fafafa',
+            border_width=2,
+            border_color="#000000",
+            font=("Verdana", 10, 'bold'),
+
+            width=sum(tams) - 35,
+            height=20,
+            hover_color='#ccb4b4',
+
+            command=lambda: self.destruir(frame_apresentador)
+        ).place(
+            x=5,
+            y=35 * i + 25
+        )
+
+        frame_apresentador.configure(
+            height=35 * i + 50
+        )
+
+    def destruir(self, frame: ctk.CTkFrame):
+        """Método responsável por destruir a apresentação base do botão"""
+
+        self.se_ja_foi_clicado = False
+        frame.destroy()
+
+    def verificacao_de_existencia_de_historico(self):
+        """
+        Descrição:
+            Método responsável por fazer a devidamente verificação
+            de existência dos arquivos inerentes à estação.
+        """
+
+        def criar_historico() -> None:
+            """
+            Descrição:
+                Função responsável por criar o histórico da estação.
+
+            Parâmetros:
+                Nenhum
+
+            Retorno:
+                Criação do arquivo de histórico em planilha
+            """
+
+            pd.DataFrame(
+                columns=[
+                            "INSTANTE"
+                        ] + var_globais[
+                            "var_nomes"
+                        ]
+            ).to_excel(
+                self.caminho_a_ser_buscado,
+                index=False
+            )
+
+        dir_a_ser_buscado = "/".join(self.caminho_a_ser_buscado.split("/")[:-1])
+        if not isdir(
+                dir_a_ser_buscado
+        ):
+            mb.showwarning(
+                "Cuidado",
+                "Não havia histórico disponível para esta estação, foi criado agora."
+            )
+
+            mkdir(
+                dir_a_ser_buscado
+            )
+
+            # Como não havia, podemos criar também
+            criar_historico()
+
+        if not isfile(
+                self.caminho_a_ser_buscado
+        ):
+            criar_historico()
+
+    def historico(
+            self,
+            se_ja_existe_janela_de_grafico: ctk.BooleanVar
+    ) -> None:
+        """
+        Descrição:
+            Método responsável por apresentar uma nova tela dispondo
+            gráficos representantes dos valores da estação com o tempo.
+        """
+
+        def apresentando_grafico_do_historico(
+                janela_atual: ctk.CTkToplevel,
+                dados_completos: list[str],
+                opcao_temporal_desejada: str,
+                opcao_de_variavel_desejada: str,
+                opcao_de_tempo_decorrido: str
+        ) -> None:
+            """
+            Descrição:
+                Função responsável por plotar o gráfico do histórico dentro da janela.
+                Para isso, ela realiza uma filtragem dos dados para termos apenas o
+                desejado.
+
+            Parâmetros:
+                Autoexplicativos.
+
+            Retorno:
+                Gráfico plotado.
+            """
+
+            def retirando_dados_inuteis(
+                    dados: list[str],
+                    momento_a_filtrar: str
+            ) -> list[str]:
+                """
+                Descrição:
+                    Função responsável por, a partir de quanto tempo se deseja
+                    visualizar, retirar os dados que não fazem parte.
+
+                    Haverá um algoritmo para a lógica de ignorar.
+                    Atenção à ele.
+
+                Parâmetros:
+                    Autoexplicativos.
+
+                Retorno:
+                    Lista de Dados Atualizada.
+                """
+
+                def ignorar_dados(
+                        x_dias_no_passado: int
+                ) -> list[str]:
+                    """
+                    Descrição:
+                        Função responsável por guardar o algoritmo para ignorarmos
+                        as informações desejadas.
+
+                        Se x = 1, vamos pegar o deste dia e o do dia anterior.
+                        Se x = 7, vamos pegar o deste dia e de 7 dias anteriores.
+                        Se x = 30, mesma lógica.
+
+                    Parâmetros:
+                        -> x_dias_no_passado:
+                            Valor que indicará quanto desejamos voltar no passado.
+
+                    Retorno:
+                        Lista de informações desejadas.
+                    """
+
+                    # Lembre-se que os primeiros elementos
+                    # da lista são os primeiros que foram adicionados
+                    # Então devemos fazer nossa busca a partir
+                    # do final
+                    indice_da_linha = -1
+                    while True:
+                        if len(dados[indice_da_linha][0]) > 4:
+
+                            data_em_string = dados[indice_da_linha][0] + f"/{self.horario_e_data.year}"
+
+                            obj_dt = dt.strptime(
+                                data_em_string,
+                                "%H:%M:%S %d/%m/%Y"
+                            )
+
+                            diferenca_em_dias = abs(
+                                (
+                                        self.horario_e_data - obj_dt
+                                ).days
+                            )
+
+                            if diferenca_em_dias > x_dias_no_passado:
+                                # Então já temos todx o desejado
+
+                                return dados[indice_da_linha:]
+                        else:
+                            # Então teremos um vazio
+                            dados.pop(indice_da_linha)
+                            indice_da_linha += 1
+
+                        indice_da_linha -= 1
+
+                match momento_a_filtrar:
+
+                    case "Tudo":
+                        return dados
+
+                    case "Último Dia":
+                        return ignorar_dados(
+                            1
+                        )
+
+                    case "Última Semana":
+                        return ignorar_dados(
+                            7
+                        )
+
+                    case "Último Mês":
+                        return ignorar_dados(
+                            30
+                        )
+
+                    case _:
+                        return [""]
+
+            def filtrando(
+                    index_da_var: int
+            ) -> tuple[list[str], list[float]]:
+                """
+                Descrição:
+                    Função responsável por filtrar os dados conforme a necessidade temporal.
+
+                Parâmetros:
+                    -> index_da_var:
+                        Indice indicador de qual variável deveremos pegar
+
+                Retorno:
+                    Tupla de duas listas, sendo uma string e outra de float
+                """
+
+                vetor_x, vetor_y = [], []
+
+                match opcao_temporal_desejada:
+                    case "Momentaneamente":
+                        # Desejamos colocar todas os dados momentâneos
+
+                        for lista_de_dados in dados_completos:
+
+                            if len(lista_de_dados[0]) > 5:
+                                vetor_x.append(
+                                    lista_de_dados[0]
+                                )
+                                vetor_y.append(
+                                    float(lista_de_dados[index_da_var])
+                                )
+
+                    case "Diariamente":
+                        dia = ''
+                        for lista_de_dados in dados_completos:
+
+                            if len(lista_de_dados[0]) > 5:
+
+                                dia_mes = lista_de_dados[0].split(" ")[-1]
+                                dia_da_string = dia_mes.split("/")[0]
+
+                                if dia == dia_da_string:
+                                    # Então devemos atualizar o valor deste dia
+                                    vetor_y[-1] += lista_de_dados[index_da_var]
+
+                                else:
+                                    dia = dia_da_string
+                                    vetor_x.append(
+                                        dia_mes
+                                    )
+                                    vetor_y.append(
+                                        lista_de_dados[index_da_var]
+                                    )
+
+                    case "Mensalmente":
+                        mes = ''
+                        for lista_de_dados in dados_completos:
+
+                            if len(lista_de_dados[0]) > 5:
+                                mes_da_string = lista_de_dados[0].split(" ")[-1].split("/")[-1]
+
+                                if mes == mes_da_string:
+                                    # Atualizamos o último valor
+                                    vetor_y[-1] += lista_de_dados[index_da_var]
+
+                                else:
+                                    mes = mes_da_string
+                                    vetor_y.append(
+                                        lista_de_dados[index_da_var]
+                                    )
+                                    vetor_x.append(
+                                        mes
+                                    )
+
+                    case _:
+                        return vetor_x, vetor_y
+
+                return vetor_x, vetor_y
+
+            if "" in {opcao_temporal_desejada, opcao_de_variavel_desejada}:
+                return None
+
+            # Devemos verificar se já há algum gráfico plotado
+            ultimo_elemento = janela_atual.winfo_children()[-1]
+            if isinstance(
+                    ultimo_elemento,
+                    Canvas
+            ):
+                ultimo_elemento.destroy()
+
+            # A partir da seleção de opção temporal e opção de variável,
+            # devemos fazer a filtragem de dados.
+            index_da_var_desejada = 1  # Começamos com 1 devido à coluna chamada INSTANTE
+            for nome_de_var in var_globais["var_nomes"]:
+                if nome_de_var == opcao_de_variavel_desejada:
+                    break
+
+                index_da_var_desejada += 1
+
+            # Devemos retirar também todx o tempo que não se
+            # encaixa no tempo desejado.
+            dados_completos = retirando_dados_inuteis(
+                dados_completos,
+                opcao_de_tempo_decorrido
+            )
+
+            eixo_x, eixo_y = filtrando(
+                index_da_var_desejada
+            )
+
+            # Criando a figura adequada
+            figura_a_ser_disposta = Figure(
+                figsize=(10, 10)
+            )
+            figura_a_ser_disposta.subplots_adjust(
+                left=0.1,
+                right=0.97,
+                top=0.95,
+                bottom=0.3
+            )
+            axes = figura_a_ser_disposta.add_subplot(111)
+
+            # Controlando a quantidade de labels que serão
+            # apresentadas
+
+            axes.bar(
+                eixo_x,
+                eixo_y
+            )
+            axes.set_xlabel("Tempo")
+            axes.set_ylabel("Valores")
+            axes.grid(True)
+            axes.set_xticklabels(
+                eixo_x,
+                rotation=40,
+                ha='right'
+            )
+
+            canvas = FigureCanvasTkAgg(
+                figura_a_ser_disposta,
+                janela_atual
+            )
+            canvas.draw()
+
+            canvas.get_tk_widget().place(
+                x=5,
+                y=125,
+                width=700,
+                height=405
+            )
+
+        def criando_tela_para_disposicao(
+                dados_completos: list[str]
+        ) -> None:
+            """
+            Descrição:
+                Função responsável pela criação e ajuste inicial da tela
+                de disposição de dados do histórico da estação
+
+            Parâmetros:
+                -> dados_completos:
+                    Lista de todas as linhas.
+
+            Retorno:
+                Subjanela ligada à interface principal
+            """
+            # Agora, devemos abrir uma nova janela, apresentando os dados da planilha.
+            subjan = ctk.CTkToplevel(
+                self.mestre
+            )
+            subjan.title(f"Apresentando Histórico Estação {self.id}")
+
+            subjan.geometry(
+                "565x430"
+            )
+            subjan.focus_force()
+
+            ctk.CTkLabel(
+                subjan,
+                text="Tipo de Exibição Temporal: ",
+
+                font=("Verdana", 12)
+            ).place(x=5, y=5)
+
+            combobox_de_apresentacao_temporal = ctk.CTkComboBox(
+                subjan,
+                values=[
+                    "",
+                    "Momentaneamente",
+                    "Diariamente",
+                    "Mensalmente"
+                ],
+                text_color="black",
+                font=("Verdana", 12),
+
+                fg_color="white",
+                corner_radius=0,
+                width=150,
+                height=20
+            )
+            combobox_de_apresentacao_temporal.place(
+                x=170,
+                y=8
+            )
+
+            ctk.CTkLabel(
+                subjan,
+                text="Variável de Clima a ser Exibida: ",
+
+                font=("Verdana", 12)
+            ).place(x=5, y=35)
+
+            combobox_de_var_de_clima = ctk.CTkComboBox(
+                subjan,
+                values=[""] + var_globais["var_nomes"],
+                text_color="black",
+                font=("Verdana", 12),
+
+                fg_color="white",
+                corner_radius=0,
+                width=150,
+                height=20
+            )
+            combobox_de_var_de_clima.place(
+                x=200,
+                y=5 + 35
+            )
+
+            ctk.CTkLabel(
+                subjan,
+                text="Quanto Tempo a Ser Exibido: ",
+
+                font=("Verdana", 12)
+            ).place(x=5, y=70)
+            combobox_de_tempo = ctk.CTkComboBox(
+                subjan,
+                values=[
+                    "Tudo",
+                    "Último Dia",
+                    "Última Semana",
+                    "Último Mês"
+                ],
+                text_color="black",
+                font=("Verdana", 12),
+
+                fg_color="white",
+                corner_radius=0,
+                width=150,
+                height=20
+            )
+            combobox_de_tempo.place(
+                x=190,
+                y=5 + 70
+            )
+
+            combobox_de_var_de_clima.configure(
+                command=lambda event: apresentando_grafico_do_historico(subjan, dados_completos, combobox_de_apresentacao_temporal.get(), combobox_de_var_de_clima.get(), combobox_de_tempo.get())
+            )
+
+            combobox_de_apresentacao_temporal.configure(
+                command=lambda event: apresentando_grafico_do_historico(subjan, dados_completos, combobox_de_apresentacao_temporal.get(), combobox_de_var_de_clima.get(), combobox_de_tempo.get())
+            )
+
+            combobox_de_tempo.configure(
+                command=lambda event: apresentando_grafico_do_historico(subjan, dados_completos, combobox_de_apresentacao_temporal.get(), combobox_de_var_de_clima.get(), combobox_de_tempo.get())
+            )
+
+            subjan.protocol(
+                "WM_DELETE_WINDOW",
+                # Assim manipulamos melhor a sua destruição
+                lambda: (
+                    se_ja_existe_janela_de_grafico.set(False),
+                    subjan.destroy()
+                )
+            )
+
+        if se_ja_existe_janela_de_grafico.get():
+            return None
+        else:
+            se_ja_existe_janela_de_grafico.set(True)
+
+        # Primeiro, verificar se o arquivo de planilha existe.
+        self.verificacao_de_existencia_de_historico()
+
+        # Extraindo todos os dados que poderão ser usados
+        dados_totais_extraidos = pd.read_excel(
+            self.caminho_a_ser_buscado
+        ).values.tolist()
+
+        criando_tela_para_disposicao(
+            dados_totais_extraidos
+        )
+
+    def atualizar_historico(
+            self
+    ):
+        """
+        Descrição:
+            Método responsável por verificar se já é possível salvar os valores obtidos
+            pela estação. Caso sim, atualiza-os.
+
+            Há uma lista de strings que marcarão os horários que desejamos salvar.
+            Entretanto, o instante em que conseguimos uma resposta do servidor não é
+            completamente certeiro.
+
+            Há toda uma lógica.
+        """
+
+        self.verificacao_de_existencia_de_historico()
+
+        # Obtendo ultimo momento salvo
+        if var_globais[
+            "ultimo_momento_salvo_na_planilha"
+        ] is None:
+            """
+            No caso, precisamos pegar o último momento salvo na planilha.
+            Para evitar abrimos ela duas vezes, salvamos temporariamente ela.
+            
+            Mais a frente, caso precisemos salvar, usaremos.
+            Caso não, apenas apagaremos. E como o 'ultimo_momento_salvo_na_planilha'
+            não será mais None, isso não acontecerá novamente
+            """
+            temporariamente: pd.DataFrame = pd.read_excel(
+                self.caminho_a_ser_buscado
+            )
+
+            # Obtemos o valor desejado
+            try:
+                ultimo_momento_salvo_str = str(temporariamente["INSTANTE"].iloc[-1]) + f"/{self.horario_e_data.year}"
+                var_globais[
+                    "ultimo_momento_salvo_na_planilha"
+                ] = dt.strptime(
+                    ultimo_momento_salvo_str,
+                    "%H:%M:%S %d/%m/%Y"
+                )
+            except (IndexError, TypeError, ValueError):
+                var_globais[
+                    "ultimo_momento_salvo_na_planilha"
+                ] = dt.strptime(
+                    "00:00:00 1/1/2020",
+                    "%H:%M:%S %d/%m/%Y"
+                )
+
+            # E então salvamos o histórico
+            var_globais["historico_temporario"] = temporariamente
+
+        string_de_atualizacao_para_data = f" {self.horario_e_data.day}/{self.horario_e_data.month}/{self.horario_e_data.year}"
+        for horario_desejado_em_str in var_globais["momentos_desejados_de_salvamento"]:
+            # Obtendo uma variável de tempo
+            horario_desejado_em_str += string_de_atualizacao_para_data
+            horario_desejado = dt.strptime(
+                horario_desejado_em_str,
+                "%H:%M:%S %d/%m/%Y"
+            )
+
+            # Afinal, os valores anteriores ao último momento salvo JÁ foram salvos
+            if horario_desejado > var_globais[
+                "ultimo_momento_salvo_na_planilha"
+            ]:
+                # Devemos verificar se já atingimos o instante
+                if self.horario_e_data > horario_desejado:
+                    # Caso sim:
+                    # Salvamos na planilha
+                    arquivo_historico = var_globais.get(
+                        "historico_temporario"
+                    )
+
+                    if arquivo_historico is None:
+                        # Então abrimos
+                        arquivo_historico = pd.read_excel(
+                            self.caminho_a_ser_buscado
+                        )
+                    else:
+                        var_globais.pop("historico_temporario")
+
+                    arquivo_historico.loc[
+                        len(arquivo_historico)
+                    ] = [
+                            self.horario_e_data.strftime(
+                                "%H:%M:%S %d/%m"
+                            )
+                        ] + self.valores
+
+                    arquivo_historico.to_excel(
+                        self.caminho_a_ser_buscado,
+                        index=False
+                    )
+
+                    # Atualizamos o último momento salvo
+                    var_globais[
+                        "ultimo_momento_salvo_na_planilha"
+                    ] = self.horario_e_data
+
+                    break
