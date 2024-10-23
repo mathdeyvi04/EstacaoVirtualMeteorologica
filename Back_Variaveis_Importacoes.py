@@ -27,6 +27,8 @@ from datetime import timedelta, time
 import netCDF4 as nc
 from numpy.ma.core import MaskedArray
 from numpy import linspace, where, ix_
+from pyproj import Proj
+import numpy as np
 import pandas as pd
 
 # Importações de Visualização de Dados
