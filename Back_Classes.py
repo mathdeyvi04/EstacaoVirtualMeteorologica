@@ -3,8 +3,6 @@ Descrição:
     Código responsável por gerenciar as classes que usaremos, são estas
     a representação do servidor e a representação do banco de dados.
 """
-import pandas as pd
-
 from Back_FuncoesBasicas import *
 
 
@@ -21,56 +19,51 @@ class Servidor:
     """
 
     def __init__(self):
-        """
-        Descrição:
-            Método responsável pela obtenção do portal de conexão.
-            Mesmo que não se tenha internet, não será esse método que
-            resultará em um erro, será o 'extrair'.
-        """
-        self.portal_de_conexao: S3Client = bt.client(
-            "s3",
-            config=Config(signature_version=UNSIGNED)
-        )
+        try:
+            self.portal_de_conexao: S3Client = bt.client(
+                "s3",
+                config=Config(signature_version=UNSIGNED)
+            )
+            self.conexao_estabelecida = True
+        except Exception as error:
+            mb.showerror(
+                "ERROR",
+                f"Houve erro ao tentar conectar-se com servidor: {error}"
+            )
+            self.conexao_estabelecida = False
 
     def extrair(
             self,
             string_definidora: str
-    ) -> dict | None:
+    ) -> dict:
         """
         Descrição:
             Método responsável por obter os dados de satélite mais recentes.
 
         Parâmetros:
             -> string_definidora:
-                String para buscarmos conteúdos desejados. Não deve ser apenas o código
-                da variável.
+                String para buscarmos conteúdos
 
         Retorno:
             Dicionário que representa os arquivos de dados.
         """
 
-        try:
-            while True:
-                print(f"Buscando: {string_definidora}")
-                resposta = self.portal_de_conexao.list_objects_v2(
-                    Bucket=var_globais["bucket"],
-                    Prefix=string_definidora
-                )
-
-                if "Contents" not in resposta:
-                    string_definidora = consertando_sufixo(
-                        string_definidora
-                    )
-                else:
-                    # Temos a garantia que há resposta
-                    return resposta["Contents"][-1]
-
-        except Exception as error:
-            mb.showerror(
-                "ERROR",
-                "Não foi possível fazer a conexão com o servidor."
+        while True:
+            print(f"Buscando: {string_definidora}")
+            resposta = self.portal_de_conexao.list_objects_v2(
+                Bucket=var_globais["bucket"],
+                Prefix=string_definidora
             )
-            return None
+
+            if "Contents" not in resposta:
+                string_definidora = consertando_sufixo(
+                    string_definidora
+                )
+            else:
+                break
+
+        # Temos a garantia que há resposta
+        return resposta["Contents"][-1]
 
     def baixando_arquivo(
             self,
@@ -124,9 +117,13 @@ class DataSat:
         Descrição:
             Método responsável por dar início ao banco de dados do satélite.
         """
-        self.dados = nc.Dataset(
+        self.arq_geral = nc.Dataset(
             arquivo_de_dados
-        ).variables
+        )
+
+        self.dados = self.arq_geral.variables
+
+        self.nome_do_arquivo_base = arquivo_de_dados
 
         self.nome_da_variavel_de_clima = arquivo_de_dados.replace(".nc", "").split("-")[-1]
 
@@ -161,6 +158,53 @@ class DataSat:
             Método responsável por, a partir da matriz de pixels completa,
             fazer os cortes necessários para se obter apenas a região desejada.
 
+            Super Descrição Detalhada:
+                print(
+                informacoes_de_posicao_geoespacial
+            )
+            ------------------------------------------------------------
+            <class 'netCDF4._netCDF4.Variable'>
+            float32 geospatial_lat_lon_extent()
+                long_name: geospatial latitude and longitude references
+                geospatial_westbound_longitude: 156.2995
+                geospatial_northbound_latitude: 81.3282
+                geospatial_eastbound_longitude: 6.2995
+                geospatial_southbound_latitude: -81.3282
+                geospatial_lat_center: 0.0
+                geospatial_lon_center: -75.0
+                geospatial_lat_nadir: 0.0
+                geospatial_lon_nadir: -75.0
+                geospatial_lat_units: degrees_north
+                geospatial_lon_units: degrees_east
+            unlimited dimensions:
+                current shape = ()
+            filling on, default _FillValue of 9.969209968386869e+36 used
+            -------------------------------------------------------------
+
+            Análise:
+                Sendo assim, imagine a matriz A(linha, coluna).
+
+                Experimentalmente:    A[x:y] -> modifica a latitude!
+                Isso significa que cada linha representa uma latitude única.
+                E como a unidade de medida comentada é degraus ao norte, podemos
+                concluir que a A(0, coluna) indica a latitude 81.3282° e A(-1, coluna)
+                indica a mesma latitude ao Sul. Como há um total de 1086 linhas,
+                concluímos que **cada linha representa 0.14977 graus de latitude**.
+
+                Sabendo disso, concluímos que cada coluna representa uma longitude.
+                Experimentalmente:  A(linha, x -> y) -> modifica a longitude!
+                E como a unidade é degraus À LESTE, aumentar a coluna significa
+                aumentar a longitude. Logo, A(linha, 0) indica a longitude -156.2995°
+                e A(linha, -1) indica -6.2995°. Concluímos que **cada coluna
+                representa 0.13812 graus de longitude à leste**.
+
+            Discussão:
+                O cerne do problema é: A TERRA NÃO É PLANA.
+                Oq temos é uma imagem 2D da Terra que é uma esfera.
+                Como já tentamos muitas formas de solucionar, e não deu certo.
+                Agasalhamos a necessidade de usar uma biblioteca externa.
+
+
         Parâmetros:
             Autoexplicativos
 
@@ -168,98 +212,84 @@ class DataSat:
             Matriz de pixels cortada.
         """
 
+        def isomorfismo(
+                vetor: tuple[float, float],
+                indo_para_lat_lon: bool = False
+        ) -> tuple[float, float]:
+            """
+            Descrição:
+                Função responsável por fornecer um isomorfismo entre
+                as coordenadas da imagem 2D e as coordenadas geográficas.
+
+            Parâmetros:
+                -> val_1, val_2:
+                    Podendo ser tanto (x, y) os índices na matriz imagem
+                    Ou (lat, lon) sendo as coordendas.
+
+                -> indo_para_lat_lon:
+                    Se True:
+                        (x, y) --> (lat, lon)
+                    Se False:
+                        (lat, lon) --> (x, y)
+
+            Retorno:
+                Vetor Correspondente.
+            """
+            pass
+
         # Aparentemente, há o padrão de que a lat e o lon vem em:
         informacoes_de_posicao_geoespacial: nc.Variable = self.dados[
             "geospatial_lat_lon_extent"
         ]
-        """
-        Ao fazermos print(informa...), obtemos:
-        
-        <class 'netCDF4._netCDF4.Variable'>
-        float32 geospatial_lat_lon_extent()
-            long_name: geospatial latitude and longitude references
-            geospatial_westbound_longitude: 156.2995
-            geospatial_northbound_latitude: 81.3282
-            geospatial_eastbound_longitude: 6.2995
-            geospatial_southbound_latitude: -81.3282
-            geospatial_lat_center: 0.0
-            geospatial_lon_center: -75.0
-            geospatial_lat_nadir: 0.0
-            geospatial_lon_nadir: -75.0
-            geospatial_lat_units: degrees_north
-            geospatial_lon_units: degrees_east
-        unlimited dimensions:
-            current shape = ()
-        filling on, default _FillValue of 9.969209968386869e+36 used
-        """
 
-        # Como sabemos que as informações vêm em uma ordem específica
-        # Não precisamos de loop para obtê-las
-        indice_dos_atributos_desejados = [1, 2, 3, 4]
-        nome_dos_atributos = informacoes_de_posicao_geoespacial.ncattrs()
-
-        lon_min, lat_max, lon_max, lat_min = [
-            informacoes_de_posicao_geoespacial.getncattr(
-                nome_dos_atributos[index]
-            ) for index in indice_dos_atributos_desejados
+        informacoes_de_projecao: nc.Variable = self.dados[
+            "goes_imager_projection"
         ]
+        ALTURA_SAT = 35786023.0
 
-        """Explicação:
-        Latitude Mais Ao Norte -> lat_max
-        Latitude Mais Ao Sul -> lat_min ( Esta estará em negativo )
-        
-        Longetude Mais Ao Leste -> lon_max
-        Longetude Mais Ao Oeste -> long_min (Esta estará em negativo )
+        projetor = Proj(
+            proj="geos",
+            h=ALTURA_SAT,
+            sweep="x",
+            lon_0=self.dados["nominal_satellite_subpoint_lon"][:],
+            ellps="WGS84"
+        )
+
+        x = self.dados["x"][:]
+        y = self.dados["y"][:]
+
+        lon_mais_oeste = -156.2995
+        lat_mais_norte = 81.3282
+        lon_mais_leste = -6.2995
+        lat_mais_sul = -81.3282
+
         """
+        lons = lon_mais_oeste + (lon_mais_leste - lon_mais_oeste) * (x - x.min()) / (x.max() - x.min())
+        lats = lat_mais_sul + (lat_mais_norte - lat_mais_sul) * (y - y.min()) / (y.max() - y.min())"""
 
-        # De posse das latitudes da imagem completa, devemos setar apenas o desejado.
-        """Petrópolis Centro -> Lat: -22.510072  Lon: -43.191425"""
-        MAX_LAT = 0
-        MIN_LAT = -20
+        def remap_to_lat_lon(x1, y1):
+            # Longitude: mapear x do intervalo [-max(x), max(x)] para [lon_mais_oeste, lon_mais_leste]
+            lon = np.interp(x1, (x1.min(), x1.max()), (lon_mais_oeste, lon_mais_leste))
 
-        # Imagine que voce está no centro da terra
-        # A máxima longitude é obtida indo cada vez mais para o oeste.
-        MAX_LON = -80
-        MIN_LON = -20
+            # Latitude: mapear y do intervalo [-max(y), max(y)] para [lat_mais_sul, lat_mais_norte]
+            lat = np.interp(y1, (y1.min(), y1.max()), (lat_mais_sul, lat_mais_norte))
 
-        # Vamos criar uma função para estes valores
-        lat_desejado_max, lat_desejado_min = corretor_de_geocoordenadas(MIN_LAT, True), corretor_de_geocoordenadas(MAX_LAT, True)
-        lon_desejado_max, lon_desejado_min = corretor_de_geocoordenadas(MIN_LON, False), corretor_de_geocoordenadas(MAX_LON, False)
+            return lon, lat
 
-        # Supondo linearidade, podemos:
-        n_linhas = len(
-            matriz_de_pixels_total
-        )
-        n_colunas = len(
-            matriz_de_pixels_total[0]
-        )
-        vetor_de_lat = linspace(
-            lat_min,
-            lat_max,
-            n_linhas
-        )
-        vetor_de_lon = linspace(
-            lon_min,
-            lon_max,
-            n_colunas
-        )
+        # Criar uma grade com as coordenadas x e y
+        X, Y = np.meshgrid(x, y)
 
-        val_lat_desejados = where(
-            (
-                    vetor_de_lat >= lat_desejado_min
-            ) & (
-                    vetor_de_lat <= lat_desejado_max
-            )
-        )[0]
-        val_lon_desejados = where(
-            (
-                    vetor_de_lon >= lon_desejado_min
-            ) & (
-                    vetor_de_lon <= lon_desejado_max
-            )
-        )[0]
+        # Remapear para latitude e longitude com base nos limites conhecidos
+        lons, lats = remap_to_lat_lon(X, Y)
 
-        return matriz_de_pixels_total[ix_(val_lat_desejados, val_lon_desejados)]
+        pp.figure(figsize=(10, 6))
+        pp.pcolormesh(lons, lats, matriz_de_pixels_total, cmap="gray")
+        pp.xlabel("Longitude")
+        pp.ylabel("Latitude")
+        pp.grid(True)
+        pp.show()
+
+        return matriz_de_pixels_total
 
     def colhendo_pixels(
             self,
@@ -301,6 +331,20 @@ class DataSat:
         pp.show()
 
         return matriz
+
+    def auto_destruicao(
+            self
+    ) -> None:
+        """
+        Descrição:
+            Método responsável por fechar o arquivo corretamente
+            e destruí-lo.
+        """
+
+        self.arq_geral.close()
+        remove(
+            self.nome_do_arquivo_base
+        )
 
 
 class Estacao:
