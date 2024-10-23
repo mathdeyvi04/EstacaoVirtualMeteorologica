@@ -6,7 +6,7 @@ Descrição:
 from Back_Variaveis_Importacoes import *
 
 
-def obtendo_instante_mais_recente() -> tuple[str, str]:
+def obtendo_instante_mais_recente() -> tuple[str, dt]:
     """
     Descrição:
         Função responsável por, usando o datetime, gerar uma string que representará
@@ -25,15 +25,12 @@ def obtendo_instante_mais_recente() -> tuple[str, str]:
     """
 
     hoje_universal = dt.utcnow()
-    hoje_brasil = dt.now()
-
-    hora_completa_instantanea = f"{hoje_brasil.hour}:{hoje_brasil.minute}:{hoje_brasil.second}"
 
     dia_juliano = hoje_universal.timetuple().tm_yday
     ano = hoje_universal.year
     string_codigo = f"/{ano}/{dia_juliano}"
 
-    return string_codigo, hora_completa_instantanea
+    return string_codigo, dt.now()
 
 
 def consertando_sufixo(
