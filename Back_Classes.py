@@ -3,6 +3,8 @@ Descrição:
     Código responsável por gerenciar as classes que usaremos, são estas
     a representação do servidor e a representação do banco de dados.
 """
+import xarray
+
 from Back_FuncoesBasicas import *
 
 
@@ -127,6 +129,7 @@ class DataSat:
 
         self.nome_da_variavel_de_clima = arquivo_de_dados.replace(".nc", "").split("-")[-1]
 
+
     def __str__(self):
         return str(self.dados)
 
@@ -148,148 +151,6 @@ class DataSat:
             ):
                 # Achamos
                 return self.dados[var]
-
-    def ampliando(
-            self,
-            matriz_de_pixels_total: MaskedArray
-    ) -> MaskedArray:
-        """
-        Descrição:
-            Método responsável por, a partir da matriz de pixels completa,
-            fazer os cortes necessários para se obter apenas a região desejada.
-
-            Super Descrição Detalhada:
-                print(
-                informacoes_de_posicao_geoespacial
-            )
-            ------------------------------------------------------------
-            <class 'netCDF4._netCDF4.Variable'>
-            float32 geospatial_lat_lon_extent()
-                long_name: geospatial latitude and longitude references
-                geospatial_westbound_longitude: 156.2995
-                geospatial_northbound_latitude: 81.3282
-                geospatial_eastbound_longitude: 6.2995
-                geospatial_southbound_latitude: -81.3282
-                geospatial_lat_center: 0.0
-                geospatial_lon_center: -75.0
-                geospatial_lat_nadir: 0.0
-                geospatial_lon_nadir: -75.0
-                geospatial_lat_units: degrees_north
-                geospatial_lon_units: degrees_east
-            unlimited dimensions:
-                current shape = ()
-            filling on, default _FillValue of 9.969209968386869e+36 used
-            -------------------------------------------------------------
-
-            Análise:
-                Sendo assim, imagine a matriz A(linha, coluna).
-
-                Experimentalmente:    A[x:y] -> modifica a latitude!
-                Isso significa que cada linha representa uma latitude única.
-                E como a unidade de medida comentada é degraus ao norte, podemos
-                concluir que a A(0, coluna) indica a latitude 81.3282° e A(-1, coluna)
-                indica a mesma latitude ao Sul. Como há um total de 1086 linhas,
-                concluímos que **cada linha representa 0.14977 graus de latitude**.
-
-                Sabendo disso, concluímos que cada coluna representa uma longitude.
-                Experimentalmente:  A(linha, x -> y) -> modifica a longitude!
-                E como a unidade é degraus À LESTE, aumentar a coluna significa
-                aumentar a longitude. Logo, A(linha, 0) indica a longitude -156.2995°
-                e A(linha, -1) indica -6.2995°. Concluímos que **cada coluna
-                representa 0.13812 graus de longitude à leste**.
-
-            Discussão:
-                O cerne do problema é: A TERRA NÃO É PLANA.
-                Oq temos é uma imagem 2D da Terra que é uma esfera.
-                Como já tentamos muitas formas de solucionar, e não deu certo.
-                Agasalhamos a necessidade de usar uma biblioteca externa.
-
-
-        Parâmetros:
-            Autoexplicativos
-
-        Retorno:
-            Matriz de pixels cortada.
-        """
-
-        def isomorfismo(
-                vetor: tuple[float, float],
-                indo_para_lat_lon: bool = False
-        ) -> tuple[float, float]:
-            """
-            Descrição:
-                Função responsável por fornecer um isomorfismo entre
-                as coordenadas da imagem 2D e as coordenadas geográficas.
-
-            Parâmetros:
-                -> val_1, val_2:
-                    Podendo ser tanto (x, y) os índices na matriz imagem
-                    Ou (lat, lon) sendo as coordendas.
-
-                -> indo_para_lat_lon:
-                    Se True:
-                        (x, y) --> (lat, lon)
-                    Se False:
-                        (lat, lon) --> (x, y)
-
-            Retorno:
-                Vetor Correspondente.
-            """
-            pass
-
-        # Aparentemente, há o padrão de que a lat e o lon vem em:
-        informacoes_de_posicao_geoespacial: nc.Variable = self.dados[
-            "geospatial_lat_lon_extent"
-        ]
-
-        informacoes_de_projecao: nc.Variable = self.dados[
-            "goes_imager_projection"
-        ]
-        ALTURA_SAT = 35786023.0
-
-        projetor = Proj(
-            proj="geos",
-            h=ALTURA_SAT,
-            sweep="x",
-            lon_0=self.dados["nominal_satellite_subpoint_lon"][:],
-            ellps="WGS84"
-        )
-
-        x = self.dados["x"][:]
-        y = self.dados["y"][:]
-
-        lon_mais_oeste = -156.2995
-        lat_mais_norte = 81.3282
-        lon_mais_leste = -6.2995
-        lat_mais_sul = -81.3282
-
-        """
-        lons = lon_mais_oeste + (lon_mais_leste - lon_mais_oeste) * (x - x.min()) / (x.max() - x.min())
-        lats = lat_mais_sul + (lat_mais_norte - lat_mais_sul) * (y - y.min()) / (y.max() - y.min())"""
-
-        def remap_to_lat_lon(x1, y1):
-            # Longitude: mapear x do intervalo [-max(x), max(x)] para [lon_mais_oeste, lon_mais_leste]
-            lon = np.interp(x1, (x1.min(), x1.max()), (lon_mais_oeste, lon_mais_leste))
-
-            # Latitude: mapear y do intervalo [-max(y), max(y)] para [lat_mais_sul, lat_mais_norte]
-            lat = np.interp(y1, (y1.min(), y1.max()), (lat_mais_sul, lat_mais_norte))
-
-            return lon, lat
-
-        # Criar uma grade com as coordenadas x e y
-        X, Y = np.meshgrid(x, y)
-
-        # Remapear para latitude e longitude com base nos limites conhecidos
-        lons, lats = remap_to_lat_lon(X, Y)
-
-        pp.figure(figsize=(10, 6))
-        pp.pcolormesh(lons, lats, matriz_de_pixels_total, cmap="gray")
-        pp.xlabel("Longitude")
-        pp.ylabel("Latitude")
-        pp.grid(True)
-        pp.show()
-
-        return matriz_de_pixels_total
 
     def colhendo_pixels(
             self,
@@ -314,23 +175,66 @@ class DataSat:
         ):
             raise TypeError
 
-        matriz = dados_da_var[:]
+        # América do Sul
+        EXTENSOES = [
+            -50,  # Min Lon  --> Fugindo de Grewitch
+            -30,  # Max Lon  --> Indo para Grewitch
+            -24,  # Min Lat  --> Descendo para Polo Sul
+            -10,  # Max Lat  --> Subindo para Polo Norte
+        ]
 
-        matriz = self.ampliando(
-            matriz
+        abrindo_arq_bizuradamente = xarray.open_dataset(self.nome_do_arquivo_base)
+
+        # Pegando as informações necessárias
+        dat = abrindo_arq_bizuradamente.metpy.parse_cf('LST')
+
+        # Criando a transformação necessária
+        geos = dat.metpy.cartopy_crs
+
+        x = dat.x
+        y = dat.y
+
+        fig = pp.figure(figsize=(10, 6))
+
+        # Criando a projeção safa, algo que não haviamos sido capazes
+        # até agora
+        projecao = ccrs.PlateCarree()
+
+        ax = fig.add_subplot(1, 1, 1, projection=projecao)
+        ax.set_extent(
+            # Aqui colocamos as limitações no mapa geral
+            EXTENSOES,
+            crs=projecao
         )
 
-        # Caso testes futuros sejam necessários, é importante descomentar
-        # essa parte para termos acessos aos gráficos gerados pelo fatiamento.
-        pp.imshow(
-            matriz,
-            cmap="gray"
+        # Visualizar a imagem na projeção retangular
+        ax.imshow(
+            dados_da_var,
+            origin='upper',
+            extent=(
+                x.min(), x.max(), y.min(), y.max()
+            ),
+            transform=geos,
+            interpolation='none'
         )
-        pp.grid(True)
-        pp.title(self.nome_da_variavel_de_clima)
+
+        # Adiciona linhas costeiras
+        ax.coastlines(
+            resolution='110m',
+            color='black',
+            linewidth=0.5
+        )
+        ax.add_feature(
+            # É isso que permite os estados aparecerem
+            ccrs.cartopy.feature.STATES,
+            linewidth=0.5
+        )
+
+        # Títulos
+        pp.title('GOES-16 True Color', loc='left', fontweight='bold', fontsize=15)
+
         pp.show()
-
-        return matriz
+        abrindo_arq_bizuradamente.close()
 
     def auto_destruicao(
             self
@@ -681,31 +585,34 @@ class Estacao:
                     # do final
                     indice_da_linha = -1
                     while True:
-                        if len(dados[indice_da_linha][0]) > 4:
+                        try:
+                            if len(dados[indice_da_linha][0]) > 4:
 
-                            data_em_string = dados[indice_da_linha][0] + f"/{self.horario_e_data.year}"
+                                data_em_string = dados[indice_da_linha][0] + f"/{self.horario_e_data.year}"
 
-                            obj_dt = dt.strptime(
-                                data_em_string,
-                                "%H:%M:%S %d/%m/%Y"
-                            )
+                                obj_dt = dt.strptime(
+                                    data_em_string,
+                                    "%H:%M:%S %d/%m/%Y"
+                                )
 
-                            diferenca_em_dias = abs(
-                                (
-                                        self.horario_e_data - obj_dt
-                                ).days
-                            )
+                                diferenca_em_dias = abs(
+                                    (
+                                            self.horario_e_data - obj_dt
+                                    ).days
+                                )
 
-                            if diferenca_em_dias > x_dias_no_passado:
-                                # Então já temos todx o desejado
+                                if diferenca_em_dias > x_dias_no_passado:
+                                    # Então já temos todx o desejado
 
-                                return dados[indice_da_linha:]
-                        else:
-                            # Então teremos um vazio
-                            dados.pop(indice_da_linha)
-                            indice_da_linha += 1
+                                    return dados[indice_da_linha:]
+                            else:
+                                # Então teremos um vazio
+                                dados.pop(indice_da_linha)
+                                indice_da_linha += 1
 
-                        indice_da_linha -= 1
+                            indice_da_linha -= 1
+                        except IndexError:
+                            pass
 
                 match momento_a_filtrar:
 

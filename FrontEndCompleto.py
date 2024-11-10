@@ -63,6 +63,7 @@ def alocando_estacoes(
             i
         )
         i += 1
+        print("hop")
 
     # Recursão
     interface.after(

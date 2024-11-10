@@ -39,18 +39,20 @@ def extraindo_informacoes_de_clima():
     if not portal_de_conexao.conexao_estabelecida:
         return None
 
+    # LSTF -> Temperatura da Superfície
+    #
     for variavel_de_clima in var_globais["vars_de_clima"]:
         resposta_do_servidor = portal_de_conexao.extrair(
-            variavel_de_clima + sufixo_codigo
+            "ABI-L2-LSTF/2024/279"
         )
 
         # Sabendo não haver arquivo .nc no diretório local, podemos
         # baixar o arquivo.
 
-        """nome_do_arquivo_baixado = portal_de_conexao.baixando_arquivo(
+        nome_do_arquivo_baixado = portal_de_conexao.baixando_arquivo(
             resposta_do_servidor,
             variavel_de_clima
-        )"""
+        )
 
         # De posse do arquivo baixado.
         info_dados = DataSat(
@@ -62,6 +64,10 @@ def extraindo_informacoes_de_clima():
         matriz_de_pixels = info_dados.colhendo_pixels(
             dados_gerais_var_clima
         )
+
+        # info_dados.auto_destruicao()
+
+
 
         # De posse dos pixels, devemos fazer o devido tratamento de seus valores.
     portal_de_conexao.fechando_portao()

@@ -19,7 +19,7 @@ from botocore.client import Config
 
 # Importações de Sistema
 from os.path import isdir, isfile
-from os import mkdir
+from os import mkdir, remove
 from datetime import datetime as dt
 from datetime import timedelta, time
 
@@ -37,6 +37,7 @@ from pprint import pprint
 from matplotlib import pyplot as pp
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import cartopy.crs as ccrs
 
 # -------------------------------------------------------------------------
 
@@ -64,7 +65,7 @@ var_globais = {
     ],
 
     # Variáveis Necessárias Para Periodicidade de Funções
-    "periodo_de_criacao_da_estacao": 60,  # EM SEGUNDOS
+    "periodo_de_criacao_da_estacao": 200,  # EM SEGUNDOS
     "momentos_desejados_de_salvamento": [
         # Strings em Formato de Horário
         "13:15:00"
@@ -74,3 +75,5 @@ var_globais = {
 
     #
 }
+
+# bAIXAR EM GEOTIFF
