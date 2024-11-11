@@ -27,7 +27,6 @@ from datetime import timedelta, time
 import netCDF4 as nc
 from numpy.ma.core import MaskedArray
 from numpy import linspace, where, ix_
-from pyproj import Proj
 import numpy as np
 import pandas as pd
 
@@ -38,6 +37,8 @@ from matplotlib import pyplot as pp
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import cartopy.crs as ccrs
+from cartopy.io import shapereader
+from shapely.geometry import box
 
 # -------------------------------------------------------------------------
 

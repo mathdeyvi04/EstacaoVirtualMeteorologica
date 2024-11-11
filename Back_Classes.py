@@ -176,12 +176,10 @@ class DataSat:
             raise TypeError
 
         # América do Sul
-        EXTENSOES = [
-            -50,  # Min Lon  --> Fugindo de Grewitch
-            -30,  # Max Lon  --> Indo para Grewitch
-            -24,  # Min Lat  --> Descendo para Polo Sul
-            -10,  # Max Lat  --> Subindo para Polo Norte
-        ]
+        lon_min = -43.4  # Min Lon  --> Fugindo de Grewitch
+        lon_max = -42.95  # Max Lon  --> Indo para Grewitch
+        lat_min = -22.6  # Min Lat  --> Descendo para Polo Sul
+        lat_max = -22.16  # Max Lat  --> Subindo para Polo Norte
 
         abrindo_arq_bizuradamente = xarray.open_dataset(self.nome_do_arquivo_base)
 
@@ -203,12 +201,18 @@ class DataSat:
         ax = fig.add_subplot(1, 1, 1, projection=projecao)
         ax.set_extent(
             # Aqui colocamos as limitações no mapa geral
-            EXTENSOES,
+            [
+                lon_min,
+                lon_max,
+                lat_min,
+                lat_max
+            ],
             crs=projecao
         )
 
         # Visualizar a imagem na projeção retangular
-        ax.imshow(
+
+        op = ax.imshow(
             dados_da_var,
             origin='upper',
             extent=(
@@ -218,22 +222,84 @@ class DataSat:
             interpolation='none'
         )
 
-        # Adiciona linhas costeiras
-        ax.coastlines(
-            resolution='110m',
-            color='black',
-            linewidth=0.5
-        )
-        ax.add_feature(
-            # É isso que permite os estados aparecerem
-            ccrs.cartopy.feature.STATES,
-            linewidth=0.5
-        )
+        def adicionando_estados() -> None:
+            """
+            Descrição:
+                Função responsável por delimitar os estados.
+                Sem muitas dificuldades.
 
-        # Títulos
-        pp.title('GOES-16 True Color', loc='left', fontweight='bold', fontsize=15)
+            Parâmetros:
+                Nenhum
 
+            Retorno:
+                Delimitação dos estados
+            """
+            # Adiciona linhas costeiras
+            ax.coastlines(
+                resolution='110m',
+                color='black',
+                linewidth=0.5
+            )
+            ax.add_feature(
+                # É isso que permite os estados aparecerem
+                ccrs.cartopy.feature.STATES,
+                linewidth=0.5
+            )
+
+        adicionando_estados()
+
+        def adicionando_municipios() -> None:
+            """
+            Descrição:
+                Função responsável por colocar os municipios
+                dentro da imagem que temos.
+                Lembre-se que quanto maior a imagem, maior
+                será o tempo de verificações e de inserções.
+
+            Parâmetros:
+                -> Conjunto dos quatros arquivos shapefile do Brasil.
+
+            Retorno:
+                Delimitação dos municipios na região.
+            """
+            # Deve ter os 4 arquivo de shape baixados no site do IBGE
+            leitor_de_cidades = shapereader.Reader(
+                "BR_Municipios_2022.shp"
+            )
+            caixa_limitadora = box(
+                lon_min,
+                lat_min,
+                lon_max,
+                lat_max
+            )
+            for cidade in leitor_de_cidades.geometries():
+                if cidade.intersects(caixa_limitadora):
+                    ax.add_geometries(
+                        [cidade],
+                        crs=projecao,
+                        edgecolor='gray',
+                        facecolor='none',
+                        linewidth=5
+                    )
+
+        adicionando_municipios()
+
+        fig.canvas.draw()
+        width, height = fig.canvas.get_width_height()
+        matriz_img = np.frombuffer(
+            fig.canvas.tostring_argb(),
+            dtype=np.uint8
+        )
+        matriz_img = matriz_img.reshape(
+            height,
+            width,
+            4
+        )  # Redimensiona para a forma da imagem (altura, largura, canais)
+
+        # Título
+        pp.title('GOES-16 Rio de Janeiro', loc='left', fontweight='bold', fontsize=15)
         pp.show()
+
         abrindo_arq_bizuradamente.close()
 
     def auto_destruicao(
