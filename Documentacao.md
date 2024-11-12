@@ -2,7 +2,7 @@
 
 Dado que a interface e seus comandos já são anti-burros, a necessidade
 de documentação é apenas para futuros desenvolvedores que se dedicarão
-neste projeto.
+ao projeto.
 
 Faremos uma explicação breve de como o código funciona na **ordem de
 funcionamento**.
@@ -14,6 +14,9 @@ funcionamento**.
 [Sobre Variáveis e Importações Inerentes à Aplicação](#_back_variaveis_importacoespy_)
 
 [Sobre Funções Básicas da Aplicação](#_back_funcoesbasicaspy_)
+
+[Sobre Objetos Criados](#_back_classespy_)
+
 
 ## _inicializacao.py_
 
@@ -42,9 +45,7 @@ não pode ser o mesmo, como nas imagens usadas na aplicação.
 
 >O sistema de importações de arquivos de código-fonte é linear e inicia-se
 no arquivo de nome _Back_Variaveis_Importacoes.py_. Seguindo a ideia 
-de uma lista linkada.
-
-> Por exemplo, imagine uma quantidade n de arquivos, A_1.py, ..., A_n.py.
+de uma lista linkada. Por exemplo, imagine uma quantidade n de arquivos, A_1.py, ..., A_n.py.
 O código A_i.py pede informações do código A_(i+1).py, seguindo a recorrência
 até o código de **maior responsabilidade**, A_n.py. Entenda como maior responsabilidade
 o tamanho do dano que a falha de um arquivo pode trazer, dado que se A_n.py
@@ -57,15 +58,8 @@ Código responsável por:
 
 * Importar todas as tecnologias inerentes à aplicação.
 
-> É interessante a devida visualização no arquivo para melhor
-compreensão de quais tecnologias são exatamente usadas, mas a princípio:
->* _tkinter_ e seus derivados para a criação de interface.
->* _tkinter_ e seus derivados para a criação de interface.
->* _boto3_ e seus derivados para conexão com o terminal.
->* _os_ e _datetime_ para manipulação de dados operacionais.
->* _numpy_ e _netcdf4_ para manipulação de dados do satélite.
->* _pandas_ para manipulação de planilhas.
->* _matplotlib_ para visualização de gráficos.
+> É interessante a devida visualização do arquivo para melhor
+compreensão de quais tecnologias são exatamente usadas.
 
 * Criar variáveis inerentes à aplicação.
 
@@ -81,4 +75,25 @@ compreensão de quais tecnologias são exatamente usadas, mas a princípio:
 
 Código responsável por:
 
+* Criar funções simples e amplamente usadas.
+
+## _Back_Classes.py_
+
+Código responsável por:
+
+* Criar um objeto de conexão com o servidor.
+* Criar um objeto capaz de representar os arquivos do Satélite.
+* Criar as Estações Virtuais.
+
+## _Back_FuncoesConexao.py_
+
+Código responsável por:
+
+* Atualizar os valores dentro das estações.
+
+## _FrontEndCompleto.py_
+
+Código responsável por:
+
+* Construir a interface principal.
 

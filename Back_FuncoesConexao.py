@@ -41,10 +41,10 @@ def extraindo_informacoes_de_clima():
 
     estacoes_a_serem_colocadas = {
         # (LOCAL_NO_INTERFACE) = [VALORES]
-        (230, 340): [],  # 1
-        (410, 330): [],  # 2
-        (270, 430): [],  # 3
-        (360, 200): [],  # 4
+        (230, 360): [],  # 1
+        (410, 350): [],  # 2
+        (270, 450): [],  # 3
+        (360, 220): [],  # 4
     }
     # LSTF -> Temperatura da Superfície
     # ACHAF -> Altura do Topo da Nuvem
@@ -83,9 +83,9 @@ def extraindo_informacoes_de_clima():
             )
 
         info_dados.auto_destruicao()
-        print(f"Leitura Concluída e Destruição do Arquivo {nome_do_arquivo_baixado} realizada.\n")
+        # print(f"Leitura Concluída e Destruição do Arquivo {nome_do_arquivo_baixado} realizada.\n")
 
-        # De posse dos pixels, devemos fazer o devido tratamento de seus valores.
+    # print(estacoes_a_serem_colocadas)
     portal_de_conexao.fechando_portao()
 
     # return dicionario de estações

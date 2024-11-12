@@ -20,7 +20,8 @@ def alocando_estacoes(
         Estações Em Condições de Serem Usadas.
     """
 
-    # Devemos verificar se há botões
+    # Devemos verificar se há estações alocadas.
+    # Vamos destruí-las
     widgets = interface.winfo_children()[::-1]
     if len(widgets) > 1:
         for elemento in widgets:
@@ -45,7 +46,7 @@ def alocando_estacoes(
         bg_color='#C2E5D1',
     ).place(
         x=0,
-        y=interface.winfo_height() - 165
+        y=interface.winfo_height() - 175
     )
 
     # De posse das informações, posso fazer o seguinte:
@@ -62,6 +63,8 @@ def alocando_estacoes(
 
     # Recursão
     interface.after(
+        # Não retira esse pow(10, 3), pois ele converte de
+        # microsegundos para segundos
         var_globais["periodo_de_criacao_da_estacao"] * pow(10, 3),
         lambda: alocando_estacoes(interface)
     )
@@ -132,7 +135,7 @@ def interface_principal() -> None:
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
 
-    comp, alt = 650, 550
+    comp, alt = 650, 600
     interface = ctk.CTk()
     interface.title(
         "Apresentação Petrópolis"
@@ -144,6 +147,7 @@ def interface_principal() -> None:
         False,
         False
     )
+    interface.iconbitmap("icone.ico")
 
     # Referenciando a cidade de petrópolis
     colocando_imagem_de_petropolis(

@@ -13,7 +13,7 @@ o grupo Lima Salgados composto pelos alunos:
 * Bertolini
 
 Possui o trabalho de construir uma espécie de software de
-Estação Virtual Meteorológica. Em teoria, deve conseguir gerar
+Estação Virtual Meteorológica. Em teoria, deve gerar
 informações de atmosfera partir de dados obtidos de satélite,
 em especial GOES - 16.
 
@@ -32,6 +32,7 @@ motivos:
 * boto3 ----- Conexão com Servidor
 * customtkinter ----- Interfaces Gráficas
 * pandas ----- Manipulação de Planilhas em código
+* cartopy ----- Projeção Geoestacionária
 
 ## Como fazer funcionar?
 
@@ -53,15 +54,3 @@ var_globais = {
 Alterando os códigos que existem dentro desta lista, sendo estes
 aqueles produtos disponíveis, por exemplo: _ABI-L2-LSTF_, alteramos
 as variáveis que serão buscadas pela aplicação.
-
-#### Sobre a Obtenção de Dados 
-No arquivo *Back_Classes.py*, reside a lógica de uma classe criada
-para representar o portal de conexão com o servidor, a partir do qual
-se obtêm as imagens do satélite. 
-Pode ser que a função de download de arquivos esteja comentada para evitar
-o clico de download, verifique no arquivo *Back_FuncoesConexao.py*.
-
-#### Sobre o Fatiamento da Imagem
-No arquivo *Back_Classes.py*, há o método **ampliando()**, no qual
-há a lógica necessária para o devido fatiamento da imagem geral em 
-uma determinada desejada.

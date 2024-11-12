@@ -1,10 +1,151 @@
-"""
-Descrição:
-    Código responsável por gerenciar as classes que usaremos, são estas
-    a representação do servidor e a representação do banco de dados.
-"""
+# Importações de Interface
+from tkinter import messagebox as mb
+import customtkinter as ctk
+from tkinter.ttk import Treeview, Style
+from tkinter import Canvas
 
-from Back_FuncoesBasicas import *
+# Importações de Servidor
+from mypy_boto3_s3 import S3Client
+import boto3 as bt
+from botocore import UNSIGNED
+from botocore.client import Config
+
+# Importações de Sistema
+from os.path import isdir, isfile
+from os import mkdir, remove, listdir
+from datetime import datetime as dt
+from datetime import timedelta, time
+
+# Importações de Manipulação de Dados
+import netCDF4 as nc
+from numpy.ma.core import MaskedArray
+import numpy as np
+import pandas as pd
+from xarray import open_dataset
+
+# Importações de Visualização de Dados
+from PIL import Image, ImageTk
+from matplotlib import pyplot as pp
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import cartopy.crs as ccrs
+from cartopy.io import shapereader
+from shapely.geometry import box
+
+# -------------------------------------------------------------------------
+
+diretorios = {
+    # Indicador de Onde Nosso Banco de Dados Geral Ficará
+    # Em teoria, ele armazenará os dados obtidos pelas Estações
+    "Banco Geral": "./Banco Geral",
+}
+
+caminhos = {
+    "Petropolis": "./petropolis.png",
+    "Imagem_da_Estacao": "./img_estacao.png"
+}
+
+# Variáveis Concorrentes
+var_globais = {
+    # Variáveis Necessárias Para Obtenção de Dados
+    "bucket": "noaa-goes16",
+    "vars_de_clima": [
+        "ABI-L2-LSTF",  # Temperatura na Superficie
+        "ABI-L2-TPWF",  # Agua Precipitavel
+        "ABI-L2-ACHAF",  # Altura do Topo da Nuvem
+        "ABI-L2-ACHTF",  # Temperatura do Topo da Nuvem
+    ],
+    "var_nomes": [
+        "Temperatura(°C)",
+        "AguaPrecipitavel(mm)",
+        "AlturaNuvem(m)",
+        "TemperaturaNuvem(°C)"
+    ],
+
+    # Variáveis Necessárias Para Periodicidade de Funções
+    "periodo_de_criacao_da_estacao": 60 * 10,  # EM SEGUNDOS
+    "momentos_desejados_de_salvamento": [
+        # Strings em Formato de Horário "H:M:S"
+        # Precisa estar em sequência crescente
+        "11:45:00"
+    ],
+    "margem_temporal_de_salvamento": timedelta(
+        # Você pode colocar o valor que quiser, mas cuidade
+        minutes=20
+    ),
+
+    "ultimo_momento_salvo_na_planilha": [None, None, None, None]
+}
+
+
+def obtendo_instante_mais_recente() -> tuple[str, dt]:
+    """
+    Descrição:
+        Função responsável por, usando o datetime, gerar uma string que representará
+        o último instante das informações.
+
+        Se não colocarmos a última hora, não precisamos nos preocupar com o problema
+        de tentar uma hora muito prematura.
+
+        Outras situações de contingência serão cuidadas em uma função específica.
+
+    Parâmetro:
+        Nenhum
+
+    Retorno:
+        String no formato 2024/DIA_JUL e instante da última atualização feita.
+    """
+
+    hoje_universal = dt.utcnow()
+
+    dia_juliano = hoje_universal.timetuple().tm_yday
+    ano = hoje_universal.year
+    string_codigo = f"/{ano}/{dia_juliano}"
+
+    return string_codigo, dt.now()
+
+
+def consertando_sufixo(
+        string_definidora: str
+) -> str:
+    """
+    Descrição:
+        Função responsável por consertar o sufixo da string definidora
+        quando não for possível obter arquivos de dados para o momento.
+
+    Parâmetros:
+        Autoexplicativo
+
+    Retorno:
+        String_definidora correta.
+    """
+
+    codigo, ano, dia_jul = string_definidora.split("/")
+
+    if int(dia_jul) == 1:
+        # Então devemos retornar um ano.
+        ano = str(
+            int(ano) - 1
+        )
+
+        # E o dia para 365, ou 366 para bissextos
+        dia_jul = str(
+            365 if ano % 4 else 366
+        )
+
+    else:
+        # Geralmente será isso
+        dia_jul = str(
+            int(dia_jul) - 1
+        )
+
+    return "/".join(
+        [
+            codigo,
+            ano,
+            dia_jul
+        ]
+    )
 
 
 class Servidor:
@@ -336,7 +477,7 @@ class DataSat:
 
         # A partir de muito sanha envolvido, finalmente
         # conseguimos MAPEAR OS PIXELS DE PETRÓPOLIS.
-        matriz_imagem = dados_da_var[:]
+        matriz_imagem = dados_da_var[:].tolist()
 
         """
         Aparentemente, cada variável tem formas diferentes de pixel.
@@ -346,62 +487,73 @@ class DataSat:
         match self.abreviacao_do_nome_da_variavel:
 
             case "LST":
-                # TEMPERATURA DA SUPERFICIE
-                valores = [
-                    matriz_imagem[775][840],
-                    matriz_imagem[775][841],
-                    matriz_imagem[776][840],
-                    matriz_imagem[774][841],
-                ]
 
-                return [
-                    valor - 273.15 if valor else "S/T" for valor in valores
-                ]
+                try:
+                    valores = [
+                        matriz_imagem[775][840],
+                        matriz_imagem[775][841],
+                        matriz_imagem[776][840],
+                        matriz_imagem[774][841],
+                    ]
+
+                    return [
+                        float(valor) - 273.15 for valor in valores
+                    ]
+
+                except:
+                    return ["S/T"] * 4
 
             case "HT":
-                # ALTURA DAS NUVENS
+                try:
+                    valores = [
+                        matriz_imagem[775][840],
+                        matriz_imagem[775][841],
+                        matriz_imagem[776][840],
+                        matriz_imagem[774][841],
+                    ]
 
-                # Vamos pegar os pontos da matriz semelhantes
-                # a da temperatura
-                valores = [
-                    matriz_imagem[775][840],
-                    matriz_imagem[775][841],
-                    matriz_imagem[776][840],
-                    matriz_imagem[774][841],
-                ]
+                    return [
+                        float(valor) for valor in valores
+                    ]
 
-                return [
-                    # Pois pode não haver nuvens.
-                    valor if isinstance(valor, float) else "S/N" for valor in valores
-                ]
+                except:
+                    return ["S/N"] * 4
 
             case "TEMP":
                 # TEMPERATURA DAS NUVENS
                 # resolução diferente
 
-                valores = [
-                    matriz_imagem[775][840],
-                    matriz_imagem[775][841],
-                    matriz_imagem[776][840],
-                    matriz_imagem[774][841],
-                ]
+                try:
+                    valores = [
+                        matriz_imagem[775][840],
+                        matriz_imagem[775][841],
+                        matriz_imagem[776][840],
+                        matriz_imagem[774][841],
+                    ]
 
-                return [
-                    valor - 273.15 if valor else "S/N" for valor in valores
-                ]
+                    return [
+                        float(valor) - 273.15 for valor in valores
+                    ]
+
+                except:
+                    return ["S/N"] * 4
 
             case "TPW":
                 # AGUA PRECIPITAVEL
-                valores = [
-                    matriz_imagem[775][840],
-                    matriz_imagem[775][841],
-                    matriz_imagem[776][840],
-                    matriz_imagem[774][841],
-                ]
+                try:
+                    valores = [
+                        matriz_imagem[775][840],
+                        matriz_imagem[775][841],
+                        matriz_imagem[776][840],
+                        matriz_imagem[774][841],
+                    ]
 
-                return [
-                    valor if valor else "S/N" for valor in valores
-                ]
+                    return [
+                        float(valor) for valor in valores
+                    ]
+
+                except:
+                    return ["S/N"] * 4
 
             case _:
                 # O sanha venceu e o lima perdeu.
@@ -1144,10 +1296,10 @@ class Estacao:
             """
             No caso, precisamos pegar o último momento salvo na planilha.
             Para evitar abrirmos ela duas vezes, salvamos temporariamente o arquivo aberto.
-            
+
             Mais a frente, caso precisemos salvar, usaremos oq já foi salvo.
             Caso não, apenas apagaremos.
-             
+
             E como o 'ultimo_momento_salvo_na_planilha'
             não será mais None, isso não acontecerá novamente
             """
@@ -1194,8 +1346,8 @@ class Estacao:
                 # Devemos verificar se já atingimos o instante
                 if horario_desejado < self.horario_e_data < (
                         horario_desejado + var_globais[
-                    "margem_temporal_de_salvamento"
-                ]
+                        "margem_temporal_de_salvamento"
+                    ]
                 ):
                     # Caso sim:
                     # Salvamos na planilha
@@ -1229,6 +1381,296 @@ class Estacao:
                         "ultimo_momento_salvo_na_planilha"
                     ][
                         self.id - 1
-                        ] = self.horario_e_data
+                    ] = self.horario_e_data
 
                     break
+
+
+def extraindo_informacoes_de_clima():
+    """
+    Descrição:
+        Função responsável por varrer as variáveis de clima
+        e buscar suas informacoes.
+
+        Em teoria, vamos baixar as informações mais recentes,
+        em seguida, extrair as informações e logo depois destruir
+        os arquivos.
+
+        Podemos reconsiderar essa última parte.
+
+    Parâmetros:
+        Nenhum
+
+    Retorno:
+        Dicionário das estações
+        {
+            (TUPLA_DE_POSICAO_NA_INTERFACE): [A, B, C, ...]
+        }
+    """
+
+    """Assim que isso iniciar, devemos mudar algo na tela para indicar que o travamento
+    é devido à busca de novos dados."""
+
+    sufixo_codigo, horario_da_ultima_atualizacao = obtendo_instante_mais_recente()
+
+    # Devemos fazer a conexão do portal e a extração dos arquivos .nc
+    portal_de_conexao = Servidor()
+
+    if not portal_de_conexao.conexao_estabelecida:
+        return None
+
+    estacoes_a_serem_colocadas = {
+        # (LOCAL_NO_INTERFACE) = [VALORES]
+        (240, 360): [],  # 1
+        (420, 350): [],  # 2
+        (280, 450): [],  # 3
+        (370, 220): [],  # 4
+    }
+    # LSTF -> Temperatura da Superfície
+    # ACHAF -> Altura do Topo da Nuvem
+    for variavel_de_clima in var_globais["vars_de_clima"]:
+        resposta_do_servidor = portal_de_conexao.extrair(
+            variavel_de_clima + sufixo_codigo
+        )
+
+        # Sabendo não haver arquivo .nc no diretório local, podemos
+        # baixar o arquivo. Caso haja, não baixará de novo.
+        nome_do_arquivo_baixado = portal_de_conexao.baixando_arquivo(
+            resposta_do_servidor,
+            variavel_de_clima
+        )
+
+        # De posse do arquivo baixado.
+        info_dados = DataSat(
+            variavel_de_clima + ".nc"
+        )
+
+        dados_gerais_var_clima = info_dados.obtendo_dados_da_variavel_principal()
+
+        pixels_de_cada_estacao = info_dados.colhendo_pixels(
+            dados_gerais_var_clima
+        )
+
+        # Esses pixels já estão ordenados com suas respestivas estações
+        for estacao, valor_do_pixel in zip(
+                estacoes_a_serem_colocadas,
+                pixels_de_cada_estacao
+        ):
+            estacoes_a_serem_colocadas[
+                estacao
+            ].append(
+                valor_do_pixel
+            )
+
+        info_dados.auto_destruicao()
+        # print(f"Leitura Concluída e Destruição do Arquivo {nome_do_arquivo_baixado} realizada.\n")
+
+    # print(estacoes_a_serem_colocadas)
+    portal_de_conexao.fechando_portao()
+
+    # return dicionario de estações
+
+    return estacoes_a_serem_colocadas, horario_da_ultima_atualizacao
+
+
+def alocando_estacoes(
+        interface: ctk.CTk
+) -> None:
+    """
+    Descrição:
+        Função responsável por aplicar todx layout das estações
+        e puxar suas funcionalidades do backend.
+
+    Parâmetros:
+        Autoexplicativo.
+
+    Retorno:
+        Estações Em Condições de Serem Usadas.
+    """
+
+    # Devemos verificar se há estações alocadas.
+    # Vamos destruí-las
+    widgets = interface.winfo_children()[::-1]
+    if len(widgets) > 1:
+        for elemento in widgets:
+            if isinstance(elemento, ctk.CTkButton):
+                elemento.destroy()
+            else:
+                if isinstance(elemento, ctk.CTkLabel):
+                    elemento.destroy()
+                break
+
+    informacoes, horario_e_data_ultima_atualizacao = extraindo_informacoes_de_clima()
+    horario_e_data_ultima_atualizacao: datetime
+
+    # Podemos então colocar um aviso
+    instante = f"{horario_e_data_ultima_atualizacao.hour}:{horario_e_data_ultima_atualizacao.minute}:{horario_e_data_ultima_atualizacao.second}"
+    ctk.CTkLabel(
+        interface,
+        text=f" Última atualização: {instante}",
+        text_color="#000000",
+        font=("Verdana", 12),
+
+        bg_color='#C2E5D1',
+    ).place(
+        x=0,
+        y=interface.winfo_height() - 175
+    )
+
+    # De posse das informações, posso fazer o seguinte:
+    i = 1
+    for posicao_de_estacao in informacoes:
+        Estacao(
+            interface,
+            posicao_de_estacao,
+            informacoes[posicao_de_estacao],
+            horario_e_data_ultima_atualizacao,
+            i
+        )
+        i += 1
+
+    # Recursão
+    interface.after(
+        # Não retira esse pow(10, 3), pois ele converte de
+        # microsegundos para segundos
+        var_globais["periodo_de_criacao_da_estacao"] * pow(10, 3),
+        lambda: alocando_estacoes(interface)
+    )
+
+
+def interface_principal() -> None:
+    """
+    Descrição:
+        Função responsável por gerar a interface principal na qual
+        tudo estará funcionando.
+        Executará diversas outras funcionalidades, esteja preparado.
+
+    Parâmetros:
+        Nenhum
+
+    Retorno:
+        Aplicação em condições.
+    """
+
+    def colocando_imagem_de_petropolis(
+            janela_pai: ctk.CTk,
+            tam_x: int,
+            tam_y: int
+    ) -> None:
+        """
+        Descrição:
+            Função responsável por colocar a imagem na janela principal.
+            Caso a imagem não exista, não vai dar exatamente erro, mas vai ficar uma bosta.
+
+        Parâmetros:
+            Autoexplicativos
+
+        Retorno:
+            Imagem de Petropólis ao fundo
+        """
+
+        try:
+            imagem = Image.open(
+                caminhos["Petropolis"]
+            ).convert("RGBA")
+
+            # Controlamos a opacidade da imagem aqui
+            # 0 -> Opaco Completo
+            # 255 -> Nenhum pouco opaco
+            opacidade = 200
+            imagem.putalpha(
+                opacidade
+            )
+
+            imagem_configurada = ctk.CTkImage(
+                imagem,
+                size=(tam_x, tam_y)
+            )
+
+            ctk.CTkLabel(
+                janela_pai,
+                image=imagem_configurada,
+                text=""
+            ).place(
+                x=0,
+                y=0
+            )
+
+        except FileNotFoundError:
+            # Barro
+            pass
+
+    ctk.set_appearance_mode("dark")
+    ctk.set_default_color_theme("dark-blue")
+
+    comp, alt = 670, 600
+    interface = ctk.CTk()
+    interface.title(
+        "Apresentação Petrópolis"
+    )
+    interface.geometry(
+        f"{comp}x{alt}"
+    )
+    interface.resizable(
+        False,
+        False
+    )
+    interface.iconbitmap("icone.ico")
+
+    # Referenciando a cidade de petrópolis
+    colocando_imagem_de_petropolis(
+        interface,
+        comp,
+        alt
+    )
+
+    # Aqui, iniciamos a brincadeira.
+    alocando_estacoes(interface)
+
+    interface.mainloop()
+
+
+def precursor() -> None:
+    """
+    Descrição:
+        Função responsável por dar início à execução da aplicação.
+
+    Parâmetros:
+        Nenhum.
+
+    Retorno:
+        Verificações de Existência e posterior execução da aplicação.
+    """
+
+    # Verificações de existência de arquivos e pastas
+    for pasta_de_dados in diretorios:
+        if not isdir(
+                diretorios[pasta_de_dados]
+        ):
+            # Quer dizer que o caminho da pasta não existe.
+            # Devemos criá-lo então.
+            mkdir(
+                diretorios["Banco Geral"]
+            )
+            mb.showinfo(
+                "Criação",
+                f"Não havia a pasta chamada {pasta_de_dados}, por isso a criei."
+            )
+
+    for arquivo in caminhos:
+        if not isfile(
+                caminhos[arquivo]
+        ):
+            if arquivo.startswith("Petro"):
+                mb.showerror(
+                    "ERROR",
+                    "Não há uma imagem de petrópolis dentro do diretório local."
+                )
+
+    # Com todas as verificações feitas, podemos dar início
+    interface_principal()
+
+
+if __name__ == '__main__':
+    precursor()
+# pyinstaller --onefile --windowed --copy-metadata numpy --icon=icone.ico TheBigOnes/EstacaoVirtualMeteorologica/Local_Storm.py
