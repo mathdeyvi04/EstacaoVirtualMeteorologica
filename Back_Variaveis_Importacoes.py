@@ -58,11 +58,14 @@ var_globais = {
     # Variáveis Necessárias Para Obtenção de Dados
     "bucket": "noaa-goes16",
     "vars_de_clima": [
-        "ABI-L2-LSTF",  #
+        "ABI-L2-LSTF",  # Temperatura na Superficie
+        "ABI-L2-ACHAF",  # Altura do Topo da Nuvem
+        "ABI-L2-ACHTF",  # Temperatura do Topo da Nuvem
     ],
     "var_nomes": [
         "Temperatura(°C)",
-        "Pressão(atm)"
+        "AlturaNuvem(m)",
+        "TemperaturaNuvem(°C)"
     ],
 
     # Variáveis Necessárias Para Periodicidade de Funções
@@ -73,8 +76,4 @@ var_globais = {
     ],
 
     "ultimo_momento_salvo_na_planilha": None
-
-    #
 }
-
-# bAIXAR EM GEOTIFF

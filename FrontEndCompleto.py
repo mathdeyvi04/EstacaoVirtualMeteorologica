@@ -34,10 +34,6 @@ def alocando_estacoes(
     informacoes, horario_e_data_ultima_atualizacao = extraindo_informacoes_de_clima()
     horario_e_data_ultima_atualizacao: datetime
 
-    informacoes = {
-        (100, 100): [12, 34]
-    }
-
     # Podemos então colocar um aviso
     instante = f"{horario_e_data_ultima_atualizacao.hour}:{horario_e_data_ultima_atualizacao.minute}:{horario_e_data_ultima_atualizacao.second}"
     ctk.CTkLabel(
@@ -63,7 +59,6 @@ def alocando_estacoes(
             i
         )
         i += 1
-        print("hop")
 
     # Recursão
     interface.after(

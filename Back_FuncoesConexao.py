@@ -24,7 +24,7 @@ def extraindo_informacoes_de_clima():
     Retorno:
         Dicionário das estações
         {
-            (lat, lon): [A, B, C, ...]
+            (TUPLA_DE_POSICAO_NA_INTERFACE): [A, B, C, ...]
         }
     """
 
@@ -39,16 +39,22 @@ def extraindo_informacoes_de_clima():
     if not portal_de_conexao.conexao_estabelecida:
         return None
 
+    estacoes_a_serem_colocadas = {
+        # (LOCAL_NO_INTERFACE) = [VALORES]
+        (230, 340): [],  # 1
+        (410, 330): [],  # 2
+        (270, 430): [],  # 3
+        (360, 200): [],  # 4
+    }
     # LSTF -> Temperatura da Superfície
-    #
+    # ACHAF -> Altura do Topo da Nuvem
     for variavel_de_clima in var_globais["vars_de_clima"]:
         resposta_do_servidor = portal_de_conexao.extrair(
-            "ABI-L2-LSTF/2024/279"
+            variavel_de_clima + sufixo_codigo
         )
 
         # Sabendo não haver arquivo .nc no diretório local, podemos
-        # baixar o arquivo.
-
+        # baixar o arquivo. Caso haja, não baixará de novo.
         nome_do_arquivo_baixado = portal_de_conexao.baixando_arquivo(
             resposta_do_servidor,
             variavel_de_clima
@@ -61,18 +67,27 @@ def extraindo_informacoes_de_clima():
 
         dados_gerais_var_clima = info_dados.obtendo_dados_da_variavel_principal()
 
-        matriz_de_pixels = info_dados.colhendo_pixels(
+        pixels_de_cada_estacao = info_dados.colhendo_pixels(
             dados_gerais_var_clima
         )
 
-        # info_dados.auto_destruicao()
+        # Esses pixels já estão ordenados com suas respestivas estações
+        for estacao, valor_do_pixel in zip(
+                estacoes_a_serem_colocadas,
+                pixels_de_cada_estacao
+        ):
+            estacoes_a_serem_colocadas[
+                estacao
+            ].append(
+                valor_do_pixel
+            )
 
-
+        info_dados.auto_destruicao()
+        print(f"Leitura Concluída e Destruição do Arquivo {nome_do_arquivo_baixado} realizada.\n")
 
         # De posse dos pixels, devemos fazer o devido tratamento de seus valores.
     portal_de_conexao.fechando_portao()
 
     # return dicionario de estações
 
-    return {}, horario_da_ultima_atualizacao
-
+    return estacoes_a_serem_colocadas, horario_da_ultima_atualizacao

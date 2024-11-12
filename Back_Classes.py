@@ -92,8 +92,9 @@ class Servidor:
                 resposta["Key"],
                 variavel_de_clima + ".nc"
             )
+            print("Download Finalizado")
         except FileExistsError:
-            pass
+            print("Arquivo já existia")
 
         return variavel_de_clima + ".nc"
 
@@ -129,6 +130,22 @@ class DataSat:
 
         self.nome_da_variavel_de_clima = arquivo_de_dados.replace(".nc", "").split("-")[-1]
 
+        # Necessário, pois dentro do arquivo de dados ainda
+        # não aparece como temos
+        relacao_chave_valor = {
+            # Qual o nome do atributo que contém a variável desejada.
+            "LSTF": "LST",
+            "ACHAF": "HT",
+            "CMIPF": "CMI",
+            "ACHTF": "TEMP"
+        }
+        try:
+            self.abreviacao_do_nome_da_variavel = relacao_chave_valor[
+                self.nome_da_variavel_de_clima
+            ]
+        except KeyError:
+            print("As disponiveis chaves são: ")
+            pprint(self.dados.keys())
 
     def __str__(self):
         return str(self.dados)
@@ -145,28 +162,32 @@ class DataSat:
         Retorno:
             Informações gerais da variável de clima.
         """
-        for var in self.dados:
-            if self.nome_da_variavel_de_clima.startswith(
-                    var
-            ):
-                # Achamos
-                return self.dados[var]
+
+        try:
+            return self.dados[
+                self.abreviacao_do_nome_da_variavel
+            ]
+
+        except Exception as error:
+            # Caso não tenha
+            print(f"Deu erro {error}, as disponiveis são:")
+            pprint([self.dados.keys()])
 
     def colhendo_pixels(
             self,
             dados_da_var: nc.Variable
-    ) -> MaskedArray:
+    ) -> list[float]:
         """
         Descrição:
-            Método responsável por gerar a matriz de pixels da variável.
-            Aqui devemos pegar a matriz total e buscar pela cidade de Petrópolis.
+            Função responsável por, a partir da matriz imagem completa,
+            selecionar quais são os pixels relativos.
 
         Parâmetros:
             -> dados_da_var:
                 Resultado do método obtendo_dados_da_variavel_de_clima
 
         Retorno:
-            Matriz de valores da variável de clima.
+            Lista dos valores de cada pixel.
         """
 
         if not isinstance(
@@ -175,132 +196,194 @@ class DataSat:
         ):
             raise TypeError
 
-        # América do Sul
-        lon_min = -43.4  # Min Lon  --> Fugindo de Grewitch
-        lon_max = -42.95  # Max Lon  --> Indo para Grewitch
-        lat_min = -22.6  # Min Lat  --> Descendo para Polo Sul
-        lat_max = -22.16  # Max Lat  --> Subindo para Polo Norte
-
-        abrindo_arq_bizuradamente = xarray.open_dataset(self.nome_do_arquivo_base)
-
-        # Pegando as informações necessárias
-        dat = abrindo_arq_bizuradamente.metpy.parse_cf('LST')
-
-        # Criando a transformação necessária
-        geos = dat.metpy.cartopy_crs
-
-        x = dat.x
-        y = dat.y
-
-        fig = pp.figure(figsize=(10, 6))
-
-        # Criando a projeção safa, algo que não haviamos sido capazes
-        # até agora
-        projecao = ccrs.PlateCarree()
-
-        ax = fig.add_subplot(1, 1, 1, projection=projecao)
-        ax.set_extent(
-            # Aqui colocamos as limitações no mapa geral
-            [
-                lon_min,
-                lon_max,
-                lat_min,
-                lat_max
-            ],
-            crs=projecao
-        )
-
-        # Visualizar a imagem na projeção retangular
-
-        op = ax.imshow(
-            dados_da_var,
-            origin='upper',
-            extent=(
-                x.min(), x.max(), y.min(), y.max()
-            ),
-            transform=geos,
-            interpolation='none'
-        )
-
-        def adicionando_estados() -> None:
+        def visualizando_mapa_de_pixels() -> None:
             """
             Descrição:
-                Função responsável por delimitar os estados.
-                Sem muitas dificuldades.
+                Função responsável por, caso seja o desejo do dev,
+                apresentar um mapa contendo os limites de estados e municipios
+                da imagem do GOES-16.
+
+                Mais a frente dentro da função, existem os parâmetros responsáveis por
+                manter o quadrado de petrópolis. O qual pode ser alterado. Atente-se à
+                tendência de cada valor.
 
             Parâmetros:
-                Nenhum
+                -> conjunto_de_arquivos_do_ibge:
+                    Para se possa ter os limites dos municipios, faz-se necessário o
+                    download externo de um conjunto de arquivos encontrados no site do ibge.
+                    Basta pesquisar por shape.
+                    São necessários os 4 arquivos do .zip.
 
             Retorno:
-                Delimitação dos estados
+                Imagem plotada de uma determinada região, a princípio petrópolis.
+                Pode demorar bastante, caso se deseje ver os limites de estado e,
+                principalmente, os limites de municipios.
             """
-            # Adiciona linhas costeiras
-            ax.coastlines(
-                resolution='110m',
-                color='black',
-                linewidth=0.5
-            )
-            ax.add_feature(
-                # É isso que permite os estados aparecerem
-                ccrs.cartopy.feature.STATES,
-                linewidth=0.5
+            # Petrópolis
+            lon_min = -43.4  # Min Lon  --> Fugindo de Grewitch
+            lon_max = -42.95  # Max Lon  --> Indo para Grewitch
+            lat_min = -22.6  # Min Lat  --> Descendo para Polo Sul
+            lat_max = -22.16  # Max Lat  --> Subindo para Polo Norte
+
+            abrindo_arq_bizuradamente = xarray.open_dataset(self.nome_do_arquivo_base)
+
+            # Pegando as informações necessárias usando a biblioteca metpy.
+            # Caso não tenha, instale.
+            dat = abrindo_arq_bizuradamente.metpy.parse_cf(
+                self.abreviacao_do_nome_da_variavel
             )
 
-        adicionando_estados()
+            # Criando o sistema referência, o global.
+            geos = dat.metpy.cartopy_crs
 
-        def adicionando_municipios() -> None:
+            # Delimitando alguns eixos
+            x = dat.x
+            y = dat.y
+
+            fig = pp.figure(figsize=(10, 6))
+
+            # Finalmente, a projeção que permitiu tudo isso
+            projecao = ccrs.PlateCarree()
+
+            ax = fig.add_subplot(1, 1, 1, projection=projecao)
+            ax.set_extent(
+                # Aqui colocamos as limitações no mapa geral
+                [
+                    lon_min,
+                    lon_max,
+                    lat_min,
+                    lat_max
+                ],
+                crs=projecao
+            )
+
+            # Visualizar a imagem na projeção retangular
+            ax.imshow(
+                dados_da_var[:],
+                origin='upper',
+                extent=(
+                    x.min(), x.max(), y.min(), y.max()
+                ),
+                transform=geos,
+                interpolation='none'
+            )
             """
-            Descrição:
-                Função responsável por colocar os municipios
-                dentro da imagem que temos.
-                Lembre-se que quanto maior a imagem, maior
-                será o tempo de verificações e de inserções.
-
-            Parâmetros:
-                -> Conjunto dos quatros arquivos shapefile do Brasil.
-
-            Retorno:
-                Delimitação dos municipios na região.
+            Super Algoritmo para achar pixel de valor determinado
             """
-            # Deve ter os 4 arquivo de shape baixados no site do IBGE
-            leitor_de_cidades = shapereader.Reader(
-                "BR_Municipios_2022.shp"
-            )
-            caixa_limitadora = box(
-                lon_min,
-                lat_min,
-                lon_max,
-                lat_max
-            )
-            for cidade in leitor_de_cidades.geometries():
-                if cidade.intersects(caixa_limitadora):
-                    ax.add_geometries(
-                        [cidade],
-                        crs=projecao,
-                        edgecolor='gray',
-                        facecolor='none',
-                        linewidth=5
-                    )
 
-        adicionando_municipios()
+            def adicionando_estados() -> None:
+                """
+                Descrição:
+                    Função responsável por delimitar os estados.
+                    Sem muitas dificuldades.
 
-        fig.canvas.draw()
-        width, height = fig.canvas.get_width_height()
-        matriz_img = np.frombuffer(
-            fig.canvas.tostring_argb(),
-            dtype=np.uint8
-        )
-        matriz_img = matriz_img.reshape(
-            height,
-            width,
-            4
-        )  # Redimensiona para a forma da imagem (altura, largura, canais)
+                Parâmetros:
+                    Nenhum
 
-        # Título
-        pp.title('GOES-16 Rio de Janeiro', loc='left', fontweight='bold', fontsize=15)
-        pp.show()
+                Retorno:
+                    Delimitação dos estados
+                """
+                # Adiciona linhas costeiras
+                ax.coastlines(
+                    resolution='110m',
+                    color='black',
+                    linewidth=0.5
+                )
+                ax.add_feature(
+                    # É isso que permite os estados aparecerem
+                    ccrs.cartopy.feature.STATES,
+                    linewidth=0.5
+                )
 
-        abrindo_arq_bizuradamente.close()
+            adicionando_estados()
+
+            def adicionando_municipios() -> None:
+                """
+                Descrição:
+                    Função responsável por colocar os municipios
+                    dentro da imagem que temos.
+                    Lembre-se que quanto maior a imagem, maior
+                    será o tempo de verificações e de inserções.
+
+                Parâmetros:
+                    -> Conjunto dos quatros arquivos shapefile do Brasil.
+
+                Retorno:
+                    Delimitação dos municipios na região.
+                """
+                # Deve ter os 4 arquivo de shape baixados no site do IBGE
+                leitor_de_cidades = shapereader.Reader(
+                    "BR_Municipios_2022.shp"
+                )
+                caixa_limitadora = box(
+                    lon_min,
+                    lat_min,
+                    lon_max,
+                    lat_max
+                )
+                for cidade in leitor_de_cidades.geometries():
+                    if cidade.intersects(caixa_limitadora):
+                        ax.add_geometries(
+                            [cidade],
+                            crs=projecao,
+                            edgecolor='gray',
+                            facecolor='none',
+                            linewidth=5
+                        )
+
+            adicionando_municipios()
+
+            # Título
+            pp.title('GOES-16 Rio de Janeiro', loc='left', fontweight='bold', fontsize=15)
+            pp.show()
+
+            abrindo_arq_bizuradamente.close()
+
+        # A partir de muito sanha envolvido, finalmente
+        # conseguimos MAPEAR OS PIXELS DE PETRÓPOLIS.
+        matriz_imagem = dados_da_var[:]
+
+        """
+        Aparentemente, cada variável tem formas diferentes de pixel.
+        Nos resta sanha do mais puro valor.
+        """
+
+        match self.abreviacao_do_nome_da_variavel:
+
+            case "LST":
+                # Para temperatura, os pixels são simples.
+                return [
+                    matriz_imagem[775][840],
+                    matriz_imagem[775][841],
+                    matriz_imagem[776][840],
+                    matriz_imagem[774][841],
+                ]
+
+            case "HT":
+                # Para Altura das Nuvens, existe a chance
+                # de que nem tenha nuvem
+
+                # Vamos pegar os pontos da matriz semelhantes
+                # a da temperatura
+                valores = [
+                    matriz_imagem[775][840],
+                    matriz_imagem[775][841],
+                    matriz_imagem[776][840],
+                    matriz_imagem[774][841],
+                ]
+
+                return [
+                    # Pois pode não haver nuvens.
+                    valor if isinstance(valor, float) else "S/N" for valor in valores
+                ]
+
+            case "TEMP":
+                visualizando_mapa_de_pixels()
+                # A resolução é diferente fi, fudeu
+
+            case _:
+                # O sanha venceu e o lima perdeu.
+                return [-1, -1, -1, -1]
 
     def auto_destruicao(
             self
