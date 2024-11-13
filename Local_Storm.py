@@ -67,11 +67,15 @@ var_globais = {
     "momentos_desejados_de_salvamento": [
         # Strings em Formato de Horário "H:M:S"
         # Precisa estar em sequência crescente
-        "11:45:00"
+        "8:00:00",
+        "12:00:00",
+        "16:00:00",
+        "20:00:00",
+        "00:00:00"
     ],
     "margem_temporal_de_salvamento": timedelta(
         # Você pode colocar o valor que quiser, mas cuidade
-        minutes=20
+        minutes=30
     ),
 
     "ultimo_momento_salvo_na_planilha": [None, None, None, None]
@@ -487,7 +491,6 @@ class DataSat:
         match self.abreviacao_do_nome_da_variavel:
 
             case "LST":
-
                 try:
                     valores = [
                         matriz_imagem[775][840],
