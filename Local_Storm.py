@@ -491,36 +491,28 @@ class DataSat:
         match self.abreviacao_do_nome_da_variavel:
 
             case "LST":
-                try:
-                    valores = [
-                        matriz_imagem[775][840],
-                        matriz_imagem[775][841],
-                        matriz_imagem[776][840],
-                        matriz_imagem[774][841],
-                    ]
+                valores = [
+                    matriz_imagem[775][840],
+                    matriz_imagem[775][841],
+                    matriz_imagem[776][840],
+                    matriz_imagem[774][841],
+                ]
 
-                    return [
-                        float(valor) - 273.15 for valor in valores
-                    ]
-
-                except:
-                    return ["S/T"] * 4
+                return [
+                    float(valor) - 273.15 if valor is not None else "S/T" for valor in valores
+                ]
 
             case "HT":
-                try:
-                    valores = [
-                        matriz_imagem[775][840],
-                        matriz_imagem[775][841],
-                        matriz_imagem[776][840],
-                        matriz_imagem[774][841],
-                    ]
+                valores = [
+                    matriz_imagem[775][840],
+                    matriz_imagem[775][841],
+                    matriz_imagem[776][840],
+                    matriz_imagem[774][841],
+                ]
 
-                    return [
-                        float(valor) for valor in valores
-                    ]
-
-                except:
-                    return ["S/N"] * 4
+                return [
+                    float(valor) if valor is not None else "S/N" for valor in valores
+                ]
 
             case "TEMP":
                 # TEMPERATURA DAS NUVENS
@@ -535,7 +527,7 @@ class DataSat:
                     ]
 
                     return [
-                        float(valor) - 273.15 for valor in valores
+                        float(valor) - 273.15 if valor is not None else "S/T" for valor in valores
                     ]
 
                 except:
@@ -543,20 +535,16 @@ class DataSat:
 
             case "TPW":
                 # AGUA PRECIPITAVEL
-                try:
-                    valores = [
-                        matriz_imagem[775][840],
-                        matriz_imagem[775][841],
-                        matriz_imagem[776][840],
-                        matriz_imagem[774][841],
-                    ]
+                valores = [
+                    matriz_imagem[775][840],
+                    matriz_imagem[775][841],
+                    matriz_imagem[776][840],
+                    matriz_imagem[774][841],
+                ]
 
-                    return [
-                        float(valor) for valor in valores
-                    ]
-
-                except:
-                    return ["S/N"] * 4
+                return [
+                    float(valor) if valor is not None else "S/N" for valor in valores
+                ]
 
             case _:
                 # O sanha venceu e o lima perdeu.
@@ -1677,3 +1665,4 @@ def precursor() -> None:
 if __name__ == '__main__':
     precursor()
 # pyinstaller --onefile --windowed --copy-metadata numpy --icon=icone.ico TheBigOnes/EstacaoVirtualMeteorologica/Local_Storm.py
+# pyinstaller Local_Storm.spec
